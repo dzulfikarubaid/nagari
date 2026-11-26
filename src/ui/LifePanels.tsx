@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CalendarDays, Repeat, GraduationCap, Briefcase, Network, Flag, Vote, Megaphone, Building2, ScrollText, TriangleAlert, HeartHandshake, HandCoins, ThumbsUp, UserX, Send } from 'lucide-react';
 import { useStore } from '../store';
 import type { GameState, OfficeId } from '../sim/types';
-import { Bar, Btn, Card, FxChips, rupiah } from './common';
+import { Bar, Btn, Card, rupiah } from './common';
 import { PLAN_ACTIONS, HABITS, HABIT_SLOTS, JOBS, JOB_LEVEL_NAMES, CAMPUSES, MAJORS, PARTIES, OFFICES, PROGRAMS, PROMISES, REGION_LABEL, ROLE_LABEL, LEVEL_LABEL, officeDef, CAMPUS_CRIT, JOB_CRIT, PARTY_CRIT } from '../content/data';
 import { jobBlock, enrollBlock, monthlyIncome, danaCooldown, partyBlock } from '../sim/life';
 import { declareBlock, feeOf, CAMPAIGN_ACTS, campaignActBlock, programBlock } from '../sim/election';
@@ -37,7 +37,7 @@ export function PlanPanel({ g }: P) {
                   return <option key={a.id} value={a.id} disabled={off}>{a.name}{off ? ' (belum bisa)' : ''}</option>;
                 })}
               </select>
-              {cur && <><p className="muted">{cur.desc}</p><FxChips fx={cur.fx} /></>}
+              {cur && <p className="muted">{cur.desc}</p>}
             </div>
           );
         })}
@@ -51,7 +51,6 @@ export function PlanPanel({ g }: P) {
               <button key={h.id} className={`pick ${on ? 'on' : ''} ${h.good ? '' : 'risky'}`} onClick={() => toggleHabit(h.id)} disabled={!on && c.habits.length >= HABIT_SLOTS}>
                 <b>{h.name}</b>
                 <span>{h.desc}</span>
-                <FxChips fx={h.fx} />
               </button>
             );
           })}
@@ -244,7 +243,6 @@ export function CampaignPanel({ g }: P) {
               <button key={a.id} className={`pick ${a.dirty ? 'risky' : ''}`} disabled={!!why} title={why ?? ''} onClick={() => act({ type: 'campaignAct', act: a.id, promise: a.id === 'janji' ? sel : undefined })}>
                 <b>{a.name}</b><span>{a.desc}</span>
                 {cost > 0 && <span className="muted">{rupiah(cost)}</span>}
-                {a.dirty && <span className="hint ic"><TriangleAlert size={13} /> Curang. Bisa terbongkar kapan saja, bahkan bertahun-tahun kemudian.</span>}
               </button>
             );
           })}
@@ -284,7 +282,6 @@ export function OfficePanel({ g }: P) {
             <button key={p.id} className={`pick ${p.id === 'titipan' ? 'risky' : ''}`} disabled={!!why} title={why ?? ''} onClick={() => act({ type: 'program', program: p.id })}>
               <b>{p.name}</b><span>{p.desc}</span>
               <span className="muted">Biaya {p.cost}</span>
-              <FxChips fx={p.fx} />
             </button>
           );
         })}

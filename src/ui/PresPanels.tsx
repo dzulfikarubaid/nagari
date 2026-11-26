@@ -3,7 +3,7 @@ import { ChartColumn, ChartLine, Wallet, Users, Landmark, ScrollText, Globe, Swo
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useStore } from '../store';
 import type { GameState, NationKey, SectorKey, MinistryId, Budget } from '../sim/types';
-import { Bar, Btn, Card, FxChips } from './common';
+import { Bar, Btn, Card } from './common';
 import { NATION_LABEL, SECTOR_LABEL, MINISTRIES, PARTIES, POLICIES, COUNTRIES, ROLE_LABEL } from '../content/data';
 import { fiscal, coalitionSeats, ministryEff } from '../sim/nation';
 import { ministerCandidates, policyBlock, policyCapital, diploBlock, warPower, legacyScore } from '../sim/presidency';
@@ -234,12 +234,10 @@ export function PolicyPanel({ g }: P) {
               <Btn small kind={on ? 'ghost' : 'primary'} why={why} onClick={() => act({ type: 'policy', id: pol.id, enact: !on })}>{on ? <X size={13} /> : <Check size={13} />}{on ? 'Cabut' : 'Sahkan'} ({policyCapital(g, pol.id, !on)})</Btn>
             </div>
             <p className="muted">{pol.desc}{pol.cost ? ` Anggaran ${pol.cost > 0 ? '+' : ''}${pol.cost}% PDB.` : ''}</p>
-            <FxChips fx={[{ nation: pol.mods }, ...(pol.instant ? [{ ...pol.instant, hint: undefined }] : []), ...(pol.hint ? [{ hint: pol.hint }] : [])]} />
             {why && !on && <small className="warn">{why}</small>}
           </div>
         );
       })}
-      <p className="muted">Angka menunjukkan arah jangka panjang statistik selama kebijakan berlaku, bukan perubahan seketika.</p>
     </Card>
   );
 }

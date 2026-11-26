@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Landmark, ChevronRight, History, RotateCcw, Hourglass, Vote, Trophy, Play } from 'lucide-react';
 import { useStore } from '../store';
 import type { GameState, AttrKey } from '../sim/types';
-import { Btn, FxChips, Modal, rupiah } from './common';
+import { Btn, Modal, rupiah } from './common';
 import { EVENT_MAP, eventText } from '../sim/events';
 import { check } from '../sim/core';
 import { BACKGROUNDS, ATTR_LABEL, officeDef } from '../content/data';
@@ -84,7 +84,6 @@ export function ResultModal({ g }: P) {
     <Modal>
       <h2>{r.title}</h2>
       <p className="event-text">{r.text}</p>
-      <FxChips fx={r.fx.map(f => ({ ...f, hint: undefined }))} />
       <div className="row end"><Btn kind="primary" onClick={() => act({ type: 'dismissResult' })}>Lanjut<ChevronRight size={15} /></Btn></div>
     </Modal>
   );

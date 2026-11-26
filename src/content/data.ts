@@ -57,14 +57,14 @@ export const JOB_LEVEL_NAMES = ['pemula', 'berpengalaman', 'senior', 'pimpinan',
 // ---------- Aksi bulanan ----------
 export interface PlanAction { id: string; name: string; desc: string; fx: Fx; need?: 'job' | 'party' | 'money' }
 export const PLAN_ACTIONS: PlanAction[] = [
-  { id: 'kerja_keras', name: 'Kerja keras', desc: 'Lembur. Penghasilan +25% dan cepat naik pangkat, tapi stres.', fx: { attr: { stres: 1.2 } }, need: 'job' },
+  { id: 'kerja_keras', name: 'Kerja keras', desc: 'Lembur dan ambil pekerjaan tambahan di kantor.', fx: { attr: { stres: 1.2 } }, need: 'job' },
   { id: 'belajar', name: 'Belajar', desc: 'Baca, kursus, diskusi.', fx: { attr: { kecerdasan: 0.35, stres: 0.2 } } },
-  { id: 'sosialisasi', name: 'Bergaul', desc: 'Perluas jaringan; peluang kenal tokoh baru.', fx: { attr: { jaringan: 0.35, karisma: 0.1 }, money: -0.5 } },
-  { id: 'blusukan', name: 'Kegiatan warga', desc: 'Gotong royong, hadir di hajatan. Popularitas lokal naik.', fx: { pop: { desa: 0.5, kabupaten: 0.15 }, attr: { karisma: 0.1 } } },
-  { id: 'istirahat', name: 'Istirahat', desc: 'Pulihkan badan dan pikiran.', fx: { attr: { stres: -2.5, kesehatan: 0.3 } } },
-  { id: 'usaha', name: 'Usaha sampingan', desc: 'Tambahan uang, hasil naik-turun.', fx: { attr: { stres: 0.5, jaringan: 0.05 } } },
-  { id: 'partai', name: 'Kegiatan partai', desc: 'Rapat, kaderisasi. Kedekatan dengan partai naik.', fx: { party: 0.8, attr: { jaringan: 0.15, stres: 0.3 } }, need: 'party' },
-  { id: 'citra', name: 'Olah citra media', desc: 'Bayar 2 juta/bulan untuk tampil di media. Popularitas luas naik.', fx: { money: -2, pop: { provinsi: 0.25, nasional: 0.2 } }, need: 'money' },
+  { id: 'sosialisasi', name: 'Bergaul', desc: 'Datang ke acara, kenalan dengan orang baru.', fx: { attr: { jaringan: 0.35, karisma: 0.1 }, money: -0.5 } },
+  { id: 'blusukan', name: 'Kegiatan warga', desc: 'Gotong royong, hadir di hajatan, ikut rapat RT.', fx: { pop: { desa: 0.5, kabupaten: 0.15 }, attr: { karisma: 0.1 } } },
+  { id: 'istirahat', name: 'Istirahat', desc: 'Tidur cukup, libur, tidak memikirkan apa-apa.', fx: { attr: { stres: -2.5, kesehatan: 0.3 } } },
+  { id: 'usaha', name: 'Usaha sampingan', desc: 'Jualan kecil-kecilan di luar pekerjaan utama.', fx: { attr: { stres: 0.5, jaringan: 0.05 } } },
+  { id: 'partai', name: 'Kegiatan partai', desc: 'Rapat, kaderisasi, bantu acara partai.', fx: { party: 0.8, attr: { jaringan: 0.15, stres: 0.3 } }, need: 'party' },
+  { id: 'citra', name: 'Olah citra media', desc: 'Bayar 2 juta/bulan untuk tampil di media.', fx: { money: -2, pop: { provinsi: 0.25, nasional: 0.2 } }, need: 'money' },
 ];
 
 // ---------- Kebiasaan ----------
