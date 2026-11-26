@@ -258,6 +258,10 @@ export interface Ending { id: EndingId; title: string; text: string; score: numb
 
 export type Phase = 'life' | 'ended';
 
+export interface Gov { name: string; party: string | null; style: string; since: number; term: number }
+export interface GovSnapshot { pdb: number; pertumbuhan: number; inflasi: number; pengangguran: number; kemiskinan: number; korupsi: number; utang: number; kebahagiaan: number }
+export interface GovRecord { name: string; party: string | null; style: string; fromYear: number; toYear: number | null; terms: number; start: GovSnapshot; end: GovSnapshot | null; how: string | null; player: boolean }
+
 export interface GameState {
   version: 1;
   seed: number;
@@ -273,6 +277,11 @@ export interface GameState {
   nation: Record<NationKey, number>;
   nationHist: Record<NationKey, number>[];
   aiBudget: Budget;
+  /** presiden AI yang sedang menjabat (null bila pemain presiden) */
+  gov: Gov | null;
+  govHistory: GovRecord[];
+  /** giliran pemilu presiden berikutnya */
+  nextElection: number;
   flags: Record<string, number>;
   history: HistoryEntry[];
   scheduled: Scheduled[];

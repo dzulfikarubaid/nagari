@@ -5,9 +5,11 @@ import { PARTIES, POLICIES, COUNTRIES, MINISTRIES, officeDef } from '../content/
 import { randomName } from '../content/npcs';
 import { coalitionSeats, ministryEff } from './nation';
 import { startCampaign, resolvePromises } from './election';
+import { playerTakesOver } from './gov';
 
 export function initPresidency(s: GameState) {
   const c = s.char;
+  playerTakesOver(s);
   const r = () => rand(s);
   const pool: Npc[] = [];
   let i = 0;
@@ -41,6 +43,8 @@ export function initPresidency(s: GameState) {
 
 export function presidentReelected(s: GameState) {
   const p = s.pres!;
+  const rec = s.govHistory[s.govHistory.length - 1];
+  if (rec?.player) rec.terms = 2;
   p.term = 2; p.monthsLeft = officeDef('presiden').term; p.capital = clamp(p.capital + 20);
   s.office!.monthsLeft = p.monthsLeft; s.office!.terms = 2;
 }

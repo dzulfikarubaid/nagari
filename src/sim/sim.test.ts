@@ -107,3 +107,23 @@ describe('konsekuensi', () => {
     expect(s.history.some(h => h.text.startsWith('Janji diingkari'))).toBe(true);
   });
 });
+
+describe('pemerintahan AI', () => {
+  it('presiden berganti lewat pemilu 5 tahunan dan riwayatnya tercatat', () => {
+    let s = newGame({ name: 'C', gender: 'L', background: 'menengah', seed: 21 });
+    expect(s.gov).not.toBeNull();
+    expect(s.govHistory.length).toBe(1);
+    const first = s.gov!.name;
+    for (let i = 0; i < 260 && !s.ending; i++) {
+      if (s.result) s = dispatch(s, { type: 'dismissResult' });
+      else if (s.pending.length) { const ev = EVENT_MAP[s.pending[0].id]; const k = ev.choices.findIndex(c => !c.need && !c.fx?.end && !c.fx?.jail && !c.outcomes); s = dispatch(s, { type: 'choose', index: k < 0 ? 0 : k }); }
+      else s = dispatch(s, { type: 'next' });
+    }
+    expect(s.govHistory.length).toBeGreaterThanOrEqual(2);
+    expect(s.govHistory[0].name).toBe(first);
+    expect(s.govHistory[0].end).not.toBeNull();
+    expect(s.govHistory[0].how).toBeTruthy();
+    expect(s.govHistory[s.govHistory.length - 1].toYear).toBeNull();
+    expect(s.nextElection).toBeGreaterThan(s.turn);
+  });
+});

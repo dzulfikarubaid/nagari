@@ -5,6 +5,7 @@ import { OFFICES, officeDef, PARTIES, PROMISES, PROGRAMS } from '../content/data
 import { randomName } from '../content/npcs';
 import { initPresidency, presidentReelected } from './presidency';
 import { finish } from './core';
+import { monthsToElection, nationalElection, ELECTION_CYCLE } from './gov';
 
 const TIER: Record<OfficeId, number> = { kades: 0, bupati: 1, gubernur: 2, presiden: 3 };
 
@@ -24,6 +25,11 @@ export function declareBlock(s: GameState, office: OfficeId, viaParty: boolean):
       if (s.office.terms >= 2) return 'Sudah dua periode';
     }
   }
+  if (office === 'presiden') {
+    const until = monthsToElection(s);
+    if (until > 8) return `Pendaftaran calon presiden dibuka 8 bulan sebelum pemilu (${until} bulan lagi)`;
+    if (until < 1) return 'Pendaftaran sudah ditutup';
+  }
   if (hasFlag(s, 'pernah_dipenjara') && office === 'presiden' && c.pop.nasional < 45) return 'Mantan narapidana butuh popularitas nasional 45 untuk lolos verifikasi';
   if (viaParty) {
     if (!c.party) return 'Belum punya partai';
@@ -41,7 +47,11 @@ function makeOpponents(s: GameState, office: OfficeId): Opponent[] {
   const count = office === 'kades' ? 2 : randInt(s, 2, 3);
   const parties = PARTIES.filter(p => p.id !== s.char.party);
   const out: Opponent[] = [];
-  for (let i = 0; i < count; i++) {
+  // Petahana ikut bertarung bila baru satu periode.
+  if (office === 'presiden' && s.gov && s.gov.term === 1) {
+    out.push({ name: s.gov.name, party: s.gov.party, strength: 34 + s.nation.approval * 0.45 + range(s, -4, 4) });
+  }
+  for (let i = out.length; i < count; i++) {
     const strong = i === 0 ? 6 : 0;
     out.push({
       name: randomName(r),
@@ -60,7 +70,8 @@ export function declare(s: GameState, office: OfficeId, viaParty: boolean) {
 export function startCampaign(s: GameState, office: OfficeId, viaParty: boolean, free = false) {
   const d = officeDef(office);
   if (!free) s.char.money -= feeOf(office, viaParty);
-  s.campaign = { office, turnsLeft: d.campaignTurns, momentum: 0, opponents: makeOpponents(s, office), actionsLeft: 2, round: 1, viaParty };
+  const turns = office === 'presiden' && !s.pres ? Math.max(1, monthsToElection(s)) : d.campaignTurns;
+  s.campaign = { office, turnsLeft: turns, momentum: 0, opponents: makeOpponents(s, office), actionsLeft: 2, round: 1, viaParty };
   addHistory(s, `Mencalonkan diri sebagai ${d.name}${viaParty ? ` lewat ${PARTIES.find(p => p.id === s.char.party)?.short}` : ' jalur independen'}.`, 'pilihan');
 }
 
@@ -258,6 +269,10 @@ function resolveElection(s: GameState) {
   s.lastElection = { office: cp.office, shares, won, runoff: false };
   const wasIncumbentPres = s.pres !== null && cp.office === 'presiden';
   s.campaign = null;
+  if (cp.office === 'presiden' && !wasIncumbentPres) {
+    if (won) s.nextElection += ELECTION_CYCLE;
+    else { const w = shares.find(x => !x.player)!; nationalElection(s, { name: w.name, party: cp.opponents.find(o => o.name === w.name)?.party ?? null }); }
+  }
   if (won) {
     takeOffice(s, cp.office);
   } else {

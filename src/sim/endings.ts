@@ -2,6 +2,7 @@ import type { GameState, EndingId, OfficeId } from './types';
 import { setFinishHook, addHistory, hasFlag, age, clamp } from './core';
 import { legacyScore } from './presidency';
 import { officeDef, POLICIES } from '../content/data';
+import { closeRecord } from './gov';
 
 const TEXT: Record<EndingId, [string, string]> = {
   legenda: ['Bapak Bangsa', 'Dua periode berlalu dan Nagari jauh lebih baik daripada saat kamu dilantik. Namamu diabadikan di jalan, bandara, dan buku pelajaran.'],
@@ -96,6 +97,7 @@ function score(s: GameState, id: EndingId): number {
 setFinishHook((s, id) => {
   const [title, text] = TEXT[id];
   s.ending = { id, title, text, score: score(s, id), causes: causes(s, id) };
+  if (s.pres) closeRecord(s, title);
   s.campaign = null;
   s.pending = [];
   const top = s.char.everOffice.length ? officeDef(s.char.everOffice[s.char.everOffice.length - 1]).name : null;

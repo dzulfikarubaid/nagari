@@ -1,4 +1,4 @@
-import type { Job, Habit, Major, Campus, Party, Policy, Country, CampaignPromise, MinistryId, OfficeId, Level, Fx, AttrKey, SectorKey, NationKey, RegionKey } from '../sim/types';
+import type { Budget, Job, Habit, Major, Campus, Party, Policy, Country, CampaignPromise, MinistryId, OfficeId, Level, Fx, AttrKey, SectorKey, NationKey, RegionKey } from '../sim/types';
 
 // ---------- Latar keluarga ----------
 export interface Background { id: string; name: string; desc: string; money: number; attr: Partial<Record<AttrKey, number>>; flags: string[] }
@@ -245,3 +245,26 @@ export const PARTY_CRIT: Record<string, Criteria> = {
   pbt: { w: { integritas: 2, karisma: 1 }, bar: 46, note: 'Terbuka untuk buruh, petani, guru, dan aktivis; curiga pada orang kaya.' },
   phm: { w: { kecerdasan: 2, integritas: 2 }, bar: 54, note: 'Mencari anak muda terdidik dan bersih.' },
 };
+
+// ---------- Gaya pemerintahan presiden AI ----------
+export interface GovStyle { id: string; name: string; desc: string; budget: Budget; mods: Partial<Record<NationKey, number>>; eff: number; integrity: number }
+export const GOV_STYLES: GovStyle[] = [
+  { id: 'populis', name: 'Populis', desc: 'Pajak rendah, subsidi dan bantuan melimpah. Rakyat senang hari ini; tagihannya datang nanti.',
+    budget: { pajak: 18, belanja: { pendidikan: 2.5, kesehatan: 2, infrastruktur: 2, pertahanan: 1.5, keamanan: 1.5, sosial: 4, lingkungan: 0.3 } },
+    mods: { kebahagiaan: 4, approval: 5, inflasi: 0.6, korupsi: 3 }, eff: 0.9, integrity: 45 },
+  { id: 'teknokrat', name: 'Teknokrat', desc: 'Anggaran disiplin, menteri profesional. Ekonomi rapi, tapi dingin dan tidak populer.',
+    budget: { pajak: 23, belanja: { pendidikan: 3.5, kesehatan: 2.5, infrastruktur: 3, pertahanan: 1.5, keamanan: 1.5, sosial: 1.8, lingkungan: 0.6 } },
+    mods: { pertumbuhan: 0.4, korupsi: -8, approval: -4 }, eff: 1.12, integrity: 75 },
+  { id: 'oligark', name: 'Oligarkis', desc: 'Proyek besar untuk kawan-kawan penguasa. Jalan terbangun, kas bocor ke mana-mana.',
+    budget: { pajak: 21, belanja: { pendidikan: 2.2, kesehatan: 1.6, infrastruktur: 4, pertahanan: 1.5, keamanan: 1.2, sosial: 1.5, lingkungan: 0.2 } },
+    mods: { korupsi: 14, pertumbuhan: 0.2, lingkungan: -6, kebahagiaan: -2 }, eff: 0.8, integrity: 20 },
+  { id: 'tangan_besi', name: 'Tangan besi', desc: 'Ketertiban di atas segalanya. Jalanan aman, kritik dibungkam.',
+    budget: { pajak: 23, belanja: { pendidikan: 2.4, kesehatan: 1.8, infrastruktur: 2.4, pertahanan: 3, keamanan: 2.8, sosial: 1.6, lingkungan: 0.3 } },
+    mods: { stabilitas: 6, kriminalitas: -7, kebahagiaan: -5, korupsi: 5 }, eff: 0.95, integrity: 40 },
+  { id: 'reformis', name: 'Reformis', desc: 'Berantas korupsi, lindungi lingkungan, benahi pendidikan. Pengusaha besar menggerutu.',
+    budget: { pajak: 24, belanja: { pendidikan: 3.8, kesehatan: 2.6, infrastruktur: 2.2, pertahanan: 1.3, keamanan: 2, sosial: 2.2, lingkungan: 1.6 } },
+    mods: { korupsi: -12, lingkungan: 6, pertumbuhan: -0.3 }, eff: 1.02, integrity: 80 },
+  { id: 'pembangunan', name: 'Pembangunan', desc: 'Kejar pertumbuhan: jalan tol, pelabuhan, pabrik. Utang dan hutan jadi korbannya.',
+    budget: { pajak: 20, belanja: { pendidikan: 2.8, kesehatan: 2, infrastruktur: 4.4, pertahanan: 1.5, keamanan: 1.5, sosial: 1.6, lingkungan: 0.2 } },
+    mods: { pertumbuhan: 0.7, lingkungan: -9, pengangguran: -0.5 }, eff: 1, integrity: 50 },
+];

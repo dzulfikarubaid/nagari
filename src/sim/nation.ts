@@ -2,7 +2,10 @@
 // anggaran, kebijakan, menteri, dan kondisi lain; jadi keputusan terasa bertahap, bukan seketika.
 import type { GameState, NationKey, Budget, MinistryId, SectorKey } from './types';
 import { rand, range, clampNation, findNpc, log, hasFlag } from './core';
-import { POLICIES } from '../content/data';
+import { POLICIES, GOV_STYLES } from '../content/data';
+
+/** Gaya presiden AI yang sedang menjabat (null bila pemain presiden). */
+export const govStyle = (s: GameState) => (!s.pres && s.gov ? GOV_STYLES.find(g => g.id === s.gov!.style) ?? null : null);
 
 export const DEFAULT_BUDGET: Budget = {
   pajak: 22,
@@ -20,7 +23,7 @@ export function initNation(r: () => number): Record<NationKey, number> {
 
 /** Efektivitas kementerian: tergantung kompetensi menterinya. */
 export function ministryEff(s: GameState, m: MinistryId): number {
-  if (!s.pres) return 0.95;
+  if (!s.pres) return govStyle(s)?.eff ?? 0.95;
   const n = findNpc(s, s.pres.cabinet[m]);
   if (!n) return 0.55;
   const fit = n.expertise === m ? 1 : 0.85;
@@ -53,7 +56,7 @@ export function fiscal(s: GameState) {
 
 function mods(s: GameState): Partial<Record<NationKey, number>> {
   const out: Partial<Record<NationKey, number>> = {};
-  if (!s.pres) return out;
+  if (!s.pres) return { ...(govStyle(s)?.mods ?? {}) };
   for (const id of s.pres.policies) {
     const p = POLICIES.find(x => x.id === id);
     if (!p) continue;
@@ -75,12 +78,13 @@ export function stepNation(s: GameState) {
   const eKeu = ministryEff(s, 'keuangan');
   const eHukum = ministryEff(s, 'hukum');
 
-  let cabinetIntegrity = 50;
+  const aiIntegrity = govStyle(s)?.integrity ?? 50;
+  let cabinetIntegrity = aiIntegrity;
   if (pres) {
     const ms = Object.values(pres.cabinet).map(id => findNpc(s, id)).filter(Boolean);
     if (ms.length) cabinetIntegrity = ms.reduce((a, x) => a + x!.integrity, 0) / ms.length;
   }
-  const leaderIntegrity = pres ? s.char.attr.integritas : 50;
+  const leaderIntegrity = pres ? s.char.attr.integritas : aiIntegrity;
   const deals = pres ? pres.countries.filter(c => c.dagang).length : 2;
   const sanctions = pres ? pres.countries.filter(c => c.sanksi).length : 0;
   const broken = pres ? s.promises.filter(p => p.office === 'presiden' && p.resolved === 'ingkar').length : 0;

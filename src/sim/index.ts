@@ -8,6 +8,7 @@ import { declare, campaignAct, stepCampaign, runProgram, stepOffice } from './el
 import { stepPresidency, appoint, coalitionAct, policyAct, setBudget, diploAct, warAct, resign } from './presidency';
 import { processScheduled, rollEvent, chooseEvent, pruneDead } from './events';
 import { BACKGROUNDS, PARTIES } from '../content/data';
+import { initGov, stepGov, migrate } from './gov';
 import { NPC_TEMPLATES } from '../content/npcs';
 
 export interface NewGameOpts { name: string; gender: 'L' | 'P'; background: string; seed?: number; boost?: AttrKey }
@@ -25,7 +26,7 @@ export function newGame(o: NewGameOpts): GameState {
       heat: 0, jail: 0, debtMonths: 0, everOffice: [], cooldown: 0,
     },
     npcs: [], seats: {}, office: null, campaign: null, lastElection: null, pres: null,
-    nation: {} as GameState['nation'], nationHist: [], aiBudget: JSON.parse(JSON.stringify(DEFAULT_BUDGET)),
+    nation: {} as GameState['nation'], nationHist: [], aiBudget: JSON.parse(JSON.stringify(DEFAULT_BUDGET)), gov: null, govHistory: [], nextElection: 60,
     flags: {}, history: [], scheduled: [], promises: [], pending: [], result: null, seen: {}, log: [], socialLeft: 2, ending: null,
   };
   const r = () => rand(s);
@@ -51,6 +52,7 @@ export function newGame(o: NewGameOpts): GameState {
   if (bg.id === 'dinasti') know('politisi');
   if (bg.id === 'santri') know('ulama');
   if (bg.id === 'pengusaha') know('pengusaha');
+  initGov(s);
   addHistory(s, `${s.char.name}, 18 tahun, ${bg.name.toLowerCase()}, lulus SMA dan bermimpi jadi presiden.`);
   return s;
 }
@@ -66,6 +68,7 @@ function next(s: GameState) {
   if (s.ending) return;
   stepCampaign(s);
   if (s.ending) return;
+  stepGov(s);
   stepOffice(s);
   stepPresidency(s);
   if (s.ending) return;
@@ -106,3 +109,4 @@ export function dispatch(state: GameState, a: Action): GameState {
 }
 
 export * from './types';
+export { migrate };

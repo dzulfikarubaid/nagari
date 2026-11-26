@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { dispatch, newGame, blocked, type GameState, type Action, type NewGameOpts } from './sim';
+import { dispatch, newGame, blocked, migrate, type GameState, type Action, type NewGameOpts } from './sim';
 
 const KEY = 'nagari-save-v1';
 
@@ -8,7 +8,7 @@ function load(): GameState | null {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const g = JSON.parse(raw) as GameState;
-    return g.version === 1 ? g : null;
+    return g.version === 1 ? migrate(g) : null;
   } catch { return null; }
 }
 function save(g: GameState | null) {

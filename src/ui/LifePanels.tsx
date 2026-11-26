@@ -7,6 +7,9 @@ import { PLAN_ACTIONS, HABITS, HABIT_SLOTS, JOBS, JOB_LEVEL_NAMES, CAMPUSES, MAJ
 import { jobBlock, enrollBlock, monthlyIncome, danaCooldown, partyBlock } from '../sim/life';
 import { declareBlock, feeOf, CAMPAIGN_ACTS, campaignActBlock, programBlock } from '../sim/election';
 import { age } from '../sim/core';
+import { monthsToElection } from '../sim/gov';
+import { GOV_STYLES } from '../content/data';
+import { Crown } from 'lucide-react';
 
 type P = { g: GameState };
 
@@ -159,8 +162,18 @@ export function PoliticsPanel({ g }: P) {
   const c = g.char;
   const party = PARTIES.find(p => p.id === c.party);
   const open = g.promises.filter(p => !p.resolved);
+  const gov = g.gov;
+  const gst = gov ? GOV_STYLES.find(x => x.id === gov.style) : null;
   return (
     <>
+      {gov && gst && (
+        <Card icon={Crown} title="Pemerintahan sekarang" right={<small>Pemilu presiden {monthsToElection(g)} bulan lagi</small>}>
+          <p>Presiden <b>{gov.name}</b>{gov.party ? <> (<span style={{ color: PARTIES.find(p => p.id === gov.party)?.color }}>{PARTIES.find(p => p.id === gov.party)?.short}</span>)</> : ' (independen)'} · periode ke-{gov.term}</p>
+          <p className="muted"><b>{gst.name}.</b> {gst.desc}</p>
+          <Bar label="Kepuasan publik pada presiden" value={g.nation.approval} tone={g.nation.approval < 40 ? 'bad' : 'good'} />
+          <p className="muted">{gov.term === 1 ? 'Petahana boleh maju lagi; kalau kamu nyalon, dia salah satu lawanmu.' : 'Sudah dua periode: pemilu berikutnya tanpa petahana.'} Riwayat lengkap ada di tab Negara.</p>
+        </Card>
+      )}
       <Card icon={Flag} title="Partai">
         {party ? (
           <>

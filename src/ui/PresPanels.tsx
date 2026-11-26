@@ -8,6 +8,9 @@ import { NATION_LABEL, SECTOR_LABEL, MINISTRIES, PARTIES, POLICIES, COUNTRIES, R
 import { fiscal, coalitionSeats, ministryEff } from '../sim/nation';
 import { ministerCandidates, policyBlock, policyCapital, diploBlock, warPower, legacyScore } from '../sim/presidency';
 import { findNpc } from '../sim/core';
+import { GOV_STYLES } from '../content/data';
+import { BookOpen } from 'lucide-react';
+import type { GovRecord } from '../sim/types';
 
 type P = { g: GameState };
 
@@ -19,6 +22,43 @@ const GROUPS: { title: string; keys: NationKey[] }[] = [
 ];
 
 const fmt = (k: NationKey, v: number) => k === 'pdb' ? `${Math.round(v).toLocaleString('id-ID')} T` : `${v.toFixed(['pertumbuhan', 'inflasi', 'pengangguran', 'kemiskinan'].includes(k) ? 1 : 0)}${NATION_LABEL[k].unit}`;
+
+function GovHistory({ g }: P) {
+  const now = 2030 + Math.floor(g.turn / 12);
+  const row = (label: string, a: number, b: number, goodUp: boolean, unit: string, digits = 1) => {
+    const d = b - a;
+    return <span key={label} className={`chip ${Math.abs(d) < 0.05 ? '' : (d > 0) === goodUp ? 'good' : 'bad'}`}>{label} {a.toFixed(digits)}{unit} → {b.toFixed(digits)}{unit}</span>;
+  };
+  const cur = { pdb: g.nation.pdb, pertumbuhan: g.nation.pertumbuhan, inflasi: g.nation.inflasi, pengangguran: g.nation.pengangguran, kemiskinan: g.nation.kemiskinan, korupsi: g.nation.korupsi, utang: g.nation.utang, kebahagiaan: g.nation.kebahagiaan };
+  return (
+    <Card icon={BookOpen} title="Riwayat presiden" right={<small>Negara yang kamu warisi adalah hasil mereka</small>}>
+      {[...g.govHistory].reverse().map((r: GovRecord, i) => {
+        const st = GOV_STYLES.find(x => x.id === r.style);
+        const party = PARTIES.find(x => x.id === r.party);
+        const e = r.end ?? cur;
+        return (
+          <div key={i} className={`npc ${r.toYear === null ? 'active' : ''}`}>
+            <div className="npc-head">
+              <div><b>{r.name}</b>{r.player && <span className="tag ok">kamu</span>}{party && <span className="tag" style={{ borderColor: party.color }}>{party.short}</span>}{st && <span className="tag">{st.name}</span>}</div>
+              <span className="muted">{r.fromYear}–{r.toYear ?? 'sekarang'} · {r.terms} periode</span>
+            </div>
+            {st && <p className="muted">{st.desc}</p>}
+            <div className="chips">
+              <span className={`chip ${e.pdb >= r.start.pdb ? 'good' : 'bad'}`}>PDB {((e.pdb / r.start.pdb - 1) * 100).toFixed(0)}% dalam {Math.max(1, (r.toYear ?? now) - r.fromYear)} thn</span>
+              {row('Inflasi', r.start.inflasi, e.inflasi, false, '%')}
+              {row('Pengangguran', r.start.pengangguran, e.pengangguran, false, '%')}
+              {row('Kemiskinan', r.start.kemiskinan, e.kemiskinan, false, '%')}
+              {row('Korupsi', r.start.korupsi, e.korupsi, false, '', 0)}
+              {row('Utang', r.start.utang, e.utang, false, '% PDB', 0)}
+              {row('Kebahagiaan', r.start.kebahagiaan, e.kebahagiaan, true, '', 0)}
+            </div>
+            {r.how && <div className="mini">Berakhir: {r.how}.</div>}
+          </div>
+        );
+      })}
+    </Card>
+  );
+}
 
 export function NationPanel({ g }: P) {
   const [sel, setSel] = useState<NationKey>('approval');
@@ -63,6 +103,7 @@ export function NationPanel({ g }: P) {
           </ResponsiveContainer>
         </div>
       </Card>
+      <GovHistory g={g} />
       <Card icon={Wallet} title="Anggaran (% PDB)">
         <div className="mini">Penerimaan {f.revenue.toFixed(1)} · Belanja {f.spend.toFixed(1)} · Bunga utang {f.interest.toFixed(1)} · Program/perang {f.extra.toFixed(1)}</div>
         <p>Saldo: <b className={f.balance < -3 ? 'warn' : 'ok'}>{f.balance.toFixed(1)}%</b> {f.balance < -3 && <span className="muted">— defisit besar menambah utang dan inflasi</span>}</p>
