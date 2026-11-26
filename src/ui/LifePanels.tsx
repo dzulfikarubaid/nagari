@@ -43,19 +43,18 @@ export function PlanPanel({ g }: P) {
         })}
         <p className="muted">Rencana berlaku terus sampai kamu ubah.</p>
       </Card>
-      <Card icon={Repeat} title={`Kebiasaan (${c.habits.length}/${HABIT_SLOTS})`} right={<small>Efek kecil tiap bulan, menumpuk bertahun-tahun</small>}>
+      <Card icon={Repeat} title={`Kebiasaan (${c.habits.length}/${HABIT_SLOTS})`}>
         <div className="grid2">
           {HABITS.map(h => {
             const on = c.habits.includes(h.id);
             return (
-              <button key={h.id} className={`pick ${on ? 'on' : ''} ${h.good ? '' : 'risky'}`} onClick={() => toggleHabit(h.id)} disabled={!on && c.habits.length >= HABIT_SLOTS}>
+              <button key={h.id} className={`pick ${on ? 'on' : ''}`} onClick={() => toggleHabit(h.id)} disabled={!on && c.habits.length >= HABIT_SLOTS}>
                 <b>{h.name}</b>
                 <span>{h.desc}</span>
               </button>
             );
           })}
         </div>
-        <p className="muted">Melepas kebiasaan buruk menambah stres.</p>
       </Card>
     </>
   );
@@ -79,7 +78,7 @@ export function CareerPanel({ g }: P) {
           </>
         ) : (
           <>
-            <p className="muted">{c.degree ? `Gelar: ${c.degree} ${MAJORS.find(m => m.id === c.major)?.name} (${CAMPUSES.find(x => x.id === c.campus)?.name}). Bisa lanjut ${c.degree === 'S1' ? 'S2 (2 tahun)' : '—'}.` : 'Lulusan SMA. Kuliah 4 tahun membuka pekerjaan dan jaringan alumni; langsung kerja memberi uang dan waktu lebih awal.'}</p>
+            <p className="muted">{c.degree ? `Gelar: ${c.degree} ${MAJORS.find(m => m.id === c.major)?.name} (${CAMPUSES.find(x => x.id === c.campus)?.name}). Bisa lanjut ${c.degree === 'S1' ? 'S2 (2 tahun)' : '—'}.` : 'Lulusan SMA. Bisa kuliah dulu atau langsung bekerja.'}</p>
             {c.degree !== 'S2' && (
               <>
                 <div className="grid2">
@@ -134,7 +133,7 @@ export function RelationPanel({ g }: P) {
   const met = g.npcs.filter(n => n.met).sort((a, b) => b.rel - a.rel);
   return (
     <Card icon={Network} title="Relasi" right={<small>{g.socialLeft} interaksi tersisa bulan ini · {g.npcs.filter(n => !n.met).length} tokoh belum dikenal</small>}>
-      {met.length === 0 && <p className="muted">Belum kenal siapa-siapa. Pilih aksi "Bergaul" di rencana bulanan untuk bertemu tokoh; makin luas jaringanmu, makin besar tokoh yang bisa kamu jangkau.</p>}
+      {met.length === 0 && <p className="muted">Belum kenal siapa-siapa. Bergaullah untuk bertemu orang baru.</p>}
       {met.map(n => (
         <div key={n.id} className="npc">
           <div className="npc-head">
@@ -151,7 +150,6 @@ export function RelationPanel({ g }: P) {
           </div>
         </div>
       ))}
-      <p className="muted">Bantuan dari orang berintegritas rendah jarang gratis. Pertemanan memudar kalau tidak dirawat.</p>
     </Card>
   );
 }
@@ -177,10 +175,10 @@ export function PoliticsPanel({ g }: P) {
         {party ? (
           <>
             <p>Anggota <b style={{ color: party.color }}>{party.name}</b> ({party.ideology}).</p>
-            <Bar label="Kedekatan dengan partai" value={c.partyStanding} tone="blue" hint="Naik lewat aksi Kegiatan partai, teman politisi separtai, dan menjabat." />
+            <Bar label="Kedekatan dengan partai" value={c.partyStanding} tone="blue" />
             {!g.pres && <Btn small kind="ghost" onClick={() => act({ type: 'leaveParty' })}>Keluar partai</Btn>}
           </>
-        ) : <p className="muted">Belum berpartai. Partai memotong biaya pencalonan separuh dan menggerakkan mesin suara, tapi menuntut kesetiaan.</p>}
+        ) : <p className="muted">Belum berpartai.</p>}
         {!g.pres && (
           <div className="grid2">
             {PARTIES.filter(p => p.id !== c.party).map(p => (
@@ -188,21 +186,20 @@ export function PoliticsPanel({ g }: P) {
                 <b style={{ color: p.color }}>{p.short} · {p.name}</b>
                 <span>{p.ideology} · {g.seats[p.id]}% kursi DPR</span>
                 <span className="crit">{PARTY_CRIT[p.id]?.note}</span>
-                <span className="muted">{partyBlock(g, p.id) ?? (c.party ? 'Ajukan pindah (dicap kutu loncat)' : 'Ajukan keanggotaan')}</span>
+                <span className="muted">{partyBlock(g, p.id) ?? (c.party ? 'Ajukan pindah partai' : 'Ajukan keanggotaan')}</span>
               </button>
             ))}
           </div>
         )}
       </Card>
       {!g.pres && (
-        <Card icon={Vote} title="Mencalonkan diri" right={<small>Bertahap lebih aman; langsung nyalon presiden boleh, tapi berat</small>}>
+        <Card icon={Vote} title="Mencalonkan diri">
           {OFFICES.map(o => {
             const wp = declareBlock(g, o.id as OfficeId, true);
             const wi = declareBlock(g, o.id as OfficeId, false);
             return (
               <div key={o.id} className="office">
                 <div><b>{o.name}</b> <span className="muted">usia {o.minAge}+ · masa jabatan {o.term / 12} thn · kampanye {o.campaignTurns} bln</span></div>
-                <div className="mini">Popularitas {LEVEL_LABEL[o.level].toLowerCase()}mu: {Math.round(c.pop[o.level])} · lawan rata-rata setara ±{o.difficulty}</div>
                 <div className="row">
                   <Btn small kind="primary" why={wp} onClick={() => act({ type: 'declare', office: o.id as OfficeId, viaParty: true })}>Lewat partai ({rupiah(feeOf(o.id as OfficeId, true))})</Btn>
                   <Btn small why={wi} onClick={() => act({ type: 'declare', office: o.id as OfficeId, viaParty: false })}>Independen ({rupiah(feeOf(o.id as OfficeId, false))})</Btn>
@@ -240,7 +237,7 @@ export function CampaignPanel({ g }: P) {
             const why = campaignActBlock(g, a.id, a.id === 'janji' ? sel : undefined);
             const cost = a.id === 'iklan' ? d.adCost : a.id === 'serangan_fajar' ? d.adCost * 2 : 0;
             return (
-              <button key={a.id} className={`pick ${a.dirty ? 'risky' : ''}`} disabled={!!why} title={why ?? ''} onClick={() => act({ type: 'campaignAct', act: a.id, promise: a.id === 'janji' ? sel : undefined })}>
+              <button key={a.id} className="pick" disabled={!!why} title={why ?? ''} onClick={() => act({ type: 'campaignAct', act: a.id, promise: a.id === 'janji' ? sel : undefined })}>
                 <b>{a.name}</b><span>{a.desc}</span>
                 {cost > 0 && <span className="muted">{rupiah(cost)}</span>}
               </button>
@@ -252,10 +249,9 @@ export function CampaignPanel({ g }: P) {
           <select value={sel} onChange={e => setPromise(e.target.value)}>
             {promises.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <p className="muted">{PROMISES.find(p => p.id === sel)?.desc} Janji yang diingkari menghantui pemilu berikutnya.</p>
+          <p className="muted">{PROMISES.find(p => p.id === sel)?.desc}</p>
         </div>
       </Card>
-      <p className="muted pad">Minta dukungan dan dana teman lewat tab Relasi.</p>
     </>
   );
 }
@@ -267,7 +263,7 @@ export function OfficePanel({ g }: P) {
   const r = o.region;
   return (
     <Card icon={Building2} title={`${d.name} — periode ke-${o.terms}`} tone="accent" right={<small>Sisa {o.monthsLeft} bulan</small>}>
-      <Bar label={REGION_LABEL.kepuasan} value={r.kepuasan} tone={r.kepuasan < 30 ? 'bad' : 'good'} hint="Di bawah 20 selama 6 bulan: kamu diberhentikan." />
+      <Bar label={REGION_LABEL.kepuasan} value={r.kepuasan} tone={r.kepuasan < 30 ? 'bad' : 'good'} />
       <div className="grid2">
         <Bar label={REGION_LABEL.kesejahteraan} value={r.kesejahteraan} tone="blue" />
         <Bar label={REGION_LABEL.infrastruktur} value={r.infrastruktur} tone="blue" />
@@ -279,14 +275,13 @@ export function OfficePanel({ g }: P) {
         {PROGRAMS.map(p => {
           const why = programBlock(g, p.id);
           return (
-            <button key={p.id} className={`pick ${p.id === 'titipan' ? 'risky' : ''}`} disabled={!!why} title={why ?? ''} onClick={() => act({ type: 'program', program: p.id })}>
+            <button key={p.id} className="pick" disabled={!!why} title={why ?? ''} onClick={() => act({ type: 'program', program: p.id })}>
               <b>{p.name}</b><span>{p.desc}</span>
               <span className="muted">Biaya {p.cost}</span>
             </button>
           );
         })}
       </div>
-      <p className="muted">Semua indikator turun pelan tiap bulan. Kinerjamu di sini menjadi popularitas di tingkat berikutnya.</p>
     </Card>
   );
 }

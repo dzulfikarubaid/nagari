@@ -70,7 +70,7 @@ export function NationPanel({ g }: P) {
   return (
     <>
       <Card icon={ChartColumn} title="Statistik negara" right={g.pres ? <small>Skor warisan sementara: <b>{legacyScore(g)}</b></small> : <small>Kamu belum presiden; ini kondisi Nagari saat ini</small>}>
-        {g.pres && <Bar label="Kepuasan publik" value={n.approval} tone={n.approval < 30 ? 'bad' : 'good'} hint="Di bawah 22% dengan koalisi kecil: pemakzulan." />}
+        {g.pres && <Bar label="Kepuasan publik" value={n.approval} tone={n.approval < 30 ? 'bad' : 'good'} />}
         {GROUPS.map(gr => (
           <div key={gr.title}>
             <h5>{gr.title}</h5>
@@ -106,7 +106,7 @@ export function NationPanel({ g }: P) {
       <GovHistory g={g} />
       <Card icon={Wallet} title="Anggaran (% PDB)">
         <div className="mini">Penerimaan {f.revenue.toFixed(1)} · Belanja {f.spend.toFixed(1)} · Bunga utang {f.interest.toFixed(1)} · Program/perang {f.extra.toFixed(1)}</div>
-        <p>Saldo: <b className={f.balance < -3 ? 'warn' : 'ok'}>{f.balance.toFixed(1)}%</b> {f.balance < -3 && <span className="muted">— defisit besar menambah utang dan inflasi</span>}</p>
+        <p>Saldo: <b className={f.balance < -3 ? 'warn' : 'ok'}>{f.balance.toFixed(1)}%</b></p>
       </Card>
     </>
   );
@@ -119,11 +119,10 @@ export function BudgetPanel({ g }: P) {
   const dirty = JSON.stringify(b) !== JSON.stringify(p.budget);
   const f = fiscal({ ...g, pres: { ...p, budget: b } });
   return (
-    <Card icon={Wallet} title="Anggaran negara" right={<small>Efeknya bertahap, berbulan-bulan sampai bertahun-tahun</small>}>
+    <Card icon={Wallet} title="Anggaran negara">
       <label className="slider">
         <span>Tarif pajak <b>{b.pajak}%</b></span>
         <input type="range" min={10} max={40} step={1} value={b.pajak} onChange={e => setB({ ...b, pajak: +e.target.value })} />
-        <small className="muted">Di atas 22% memperlambat ekonomi; menaikkan pajak langsung menurunkan kepuasan.</small>
       </label>
       {(Object.keys(b.belanja) as SectorKey[]).map(k => (
         <label key={k} className="slider">
@@ -136,7 +135,6 @@ export function BudgetPanel({ g }: P) {
         <Btn kind="primary" disabled={!dirty} onClick={() => act({ type: 'setBudget', budget: b })}>Sahkan anggaran</Btn>
         <Btn kind="ghost" disabled={!dirty} onClick={() => setB(JSON.parse(JSON.stringify(p.budget)))}>Batal</Btn>
       </div>
-      <p className="muted">Korupsi membocorkan belanja dan penerimaan. Menteri yang kompeten membuat tiap rupiah lebih berarti.</p>
     </Card>
   );
 }
@@ -154,12 +152,12 @@ export function CabinetPanel({ g }: P) {
         return (
           <div key={m.id} className="npc">
             <div className="npc-head">
-              <div><b>{m.name}</b> <span className="muted">· {m.affects}</span></div>
-              <span className={cur ? 'ok' : 'warn'}>efektivitas {Math.round(ministryEff(g, m.id) * 100)}%</span>
+              <div><b>{m.name}</b></div>
+              <span className={cur ? 'ok' : 'warn'}>{cur ? 'terisi' : 'kosong'}</span>
             </div>
             {cur ? (
               <div className="mini">{cur.name} — kompetensi {cur.competence}, integritas {cur.integrity}, loyalitas {cur.loyalty}{cur.party ? `, ${PARTIES.find(x => x.id === cur.party)?.short}` : ', nonpartai'}{cur.expertise !== m.id ? ' · bukan bidangnya' : ''}</div>
-            ) : <div className="mini warn">Kosong — kementerian berjalan tanpa arah.</div>}
+            ) : <div className="mini warn">Belum ada menteri.</div>}
             <div className="row">
               <Btn small onClick={() => setOpen(open === m.id ? null : m.id)}>{open === m.id ? 'Tutup' : cur ? 'Ganti' : 'Pilih menteri'}</Btn>
               {cur && <Btn small kind="ghost" onClick={() => act({ type: 'appoint', ministry: m.id, npcId: null })}>Copot</Btn>}
@@ -178,7 +176,6 @@ export function CabinetPanel({ g }: P) {
           </div>
         );
       })}
-      <p className="muted">Ahli menaikkan statistik sektornya. Kader partai menjaga koalisi. Menteri berintegritas rendah bisa ditangkap dan menyeretmu.</p>
     </Card>
   );
 }
@@ -190,7 +187,7 @@ export function ParliamentPanel({ g }: P) {
   return (
     <>
       <Card icon={Landmark} title="DPR & koalisi" right={<small>Modal politik: <b>{Math.round(p.capital)}</b></small>}>
-        <Bar label={`Kursi koalisi: ${seats}%`} value={seats} tone={seats >= 50 ? 'good' : 'bad'} hint="Di bawah 50%: semua UU jauh lebih mahal. Di bawah 34% dan kepuasan rendah: pemakzulan." />
+        <Bar label={`Kursi koalisi: ${seats}%`} value={seats} tone={seats >= 50 ? 'good' : 'bad'} />
         <div className="seatbar">{PARTIES.map(x => <div key={x.id} style={{ width: `${g.seats[x.id]}%`, background: x.color, opacity: p.coalition[x.id] !== undefined ? 1 : 0.3 }} title={`${x.short} ${g.seats[x.id]}%`} />)}</div>
         {PARTIES.map(x => {
           const sat = p.coalition[x.id];
@@ -201,7 +198,6 @@ export function ParliamentPanel({ g }: P) {
                 <div><b style={{ color: x.color }}>{x.short}</b> {x.name} <span className="muted">· {x.ideology} · {g.seats[x.id]}%</span></div>
                 {inC ? <span className={sat < 35 ? 'warn' : 'ok'}>kepuasan {Math.round(sat)}</span> : <span className="muted">oposisi</span>}
               </div>
-              <div className="mini">Suka: {x.likes.join(', ')} · Benci: {x.hates.join(', ')}</div>
               <div className="row">
                 {inC ? (x.id !== g.char.party && <Btn small kind="ghost" onClick={() => act({ type: 'coalition', party: x.id, join: false })}>Keluarkan</Btn>)
                   : <Btn small why={p.capital < 8 ? 'Butuh modal politik 8' : null} onClick={() => act({ type: 'coalition', party: x.id, join: true })}>Ajak koalisi (8 modal)</Btn>}
@@ -209,7 +205,6 @@ export function ParliamentPanel({ g }: P) {
             </div>
           );
         })}
-        <p className="muted">Partai koalisi tanpa kursi menteri makin tidak puas dan akhirnya keluar.</p>
       </Card>
       <Card icon={DoorOpen} title="Jalan keluar">
         <p className="muted">Masa jabatan ke-{p.term}, sisa {p.monthsLeft} bulan.</p>
@@ -223,7 +218,7 @@ export function PolicyPanel({ g }: P) {
   const act = useStore(s => s.act);
   const p = g.pres!;
   return (
-    <Card icon={ScrollText} title="Kebijakan & undang-undang" right={<small>Modal politik: <b>{Math.round(p.capital)}</b>{coalitionSeats(g) < 50 ? ' · tanpa mayoritas: biaya ×1,8' : ''}</small>}>
+    <Card icon={ScrollText} title="Kebijakan & undang-undang" right={<small>Modal politik: <b>{Math.round(p.capital)}</b></small>}>
       {POLICIES.map(pol => {
         const on = p.policies.includes(pol.id);
         const why = policyBlock(g, pol.id, !on);
@@ -265,7 +260,6 @@ export function DiploPanel({ g }: P) {
               <Btn small kind={w.stance === 'bertahan' ? 'primary' : ''} onClick={() => act({ type: 'war', act: 'bertahan' })}><ShieldHalf size={13} />Bertahan</Btn>
               <Btn small why={p.diploDone ? 'Langkah diplomasi bulan ini sudah dipakai' : null} onClick={() => act({ type: 'war', act: 'damai' })}><Flag size={13} />Tawarkan damai</Btn>
             </div>
-            <p className="muted">Menyerang mempercepat hasil ke dua arah dan menguras militer. Perang membebani anggaran, ekonomi, dan kepuasan publik. Kalah total berarti tamat.</p>
           </Card>
         );
       })()}
@@ -290,7 +284,6 @@ export function DiploPanel({ g }: P) {
             </div>
           );
         })}
-        <p className="muted">Perjanjian dagang menaikkan pertumbuhan. Sekutu menambah kekuatan saat perang. Negara agresif yang hubungannya di bawah −75 bisa menyerang lebih dulu.</p>
       </Card>
     </>
   );

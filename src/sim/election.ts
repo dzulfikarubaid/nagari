@@ -77,14 +77,14 @@ export function startCampaign(s: GameState, office: OfficeId, viaParty: boolean,
 
 export interface CampaignAct { id: string; name: string; desc: string; dirty?: boolean }
 export const CAMPAIGN_ACTS: CampaignAct[] = [
-  { id: 'blusukan', name: 'Blusukan', desc: 'Datangi pasar dan kampung. Murah, melelahkan.' },
-  { id: 'iklan', name: 'Pasang iklan & baliho', desc: 'Bayar untuk dikenal.' },
-  { id: 'debat', name: 'Debat terbuka', desc: 'Untung besar bila cerdas dan karismatik; rugi bila tidak.' },
-  { id: 'galang_dana', name: 'Galang dana', desc: 'Kumpulkan sumbangan pendukung.' },
-  { id: 'lobi', name: 'Lobi elite partai', desc: 'Gerakkan mesin partai.' },
-  { id: 'janji', name: 'Umbar janji kampanye', desc: 'Dongkrak suara. Janji dicatat dan ditagih.' },
+  { id: 'blusukan', name: 'Blusukan', desc: 'Datangi pasar dan kampung satu per satu.' },
+  { id: 'iklan', name: 'Pasang iklan & baliho', desc: 'Sewa baliho, spanduk, dan slot iklan.' },
+  { id: 'debat', name: 'Debat terbuka', desc: 'Adu gagasan dengan lawan di depan publik.' },
+  { id: 'galang_dana', name: 'Galang dana', desc: 'Minta sumbangan dari pendukung.' },
+  { id: 'lobi', name: 'Lobi elite partai', desc: 'Temui para petinggi partai.' },
+  { id: 'janji', name: 'Umbar janji kampanye', desc: 'Umumkan satu janji besar kepada pemilih.' },
   { id: 'serangan_fajar', name: 'Serangan fajar', desc: 'Bagi-bagi amplop menjelang coblosan.', dirty: true },
-  { id: 'kampanye_hitam', name: 'Kampanye hitam', desc: 'Sebar fitnah tentang lawan terkuat.', dirty: true },
+  { id: 'kampanye_hitam', name: 'Kampanye hitam', desc: 'Sebar cerita buruk tentang lawan terkuat.', dirty: true },
 ];
 
 export function campaignActBlock(s: GameState, act: string, promise?: string): string | null {
