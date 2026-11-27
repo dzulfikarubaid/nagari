@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Landmark, ChevronRight, History, RotateCcw, Hourglass, Vote, Trophy, Play } from 'lucide-react';
 import { useStore } from '../store';
 import type { GameState, AttrKey } from '../sim/types';
-import { Btn, Modal, rupiah } from './common';
+import { Btn, Modal, Select, rupiah } from './common';
 import { EVENT_MAP, eventText } from '../sim/events';
 import { check } from '../sim/core';
-import { BACKGROUNDS, ATTR_LABEL, officeDef } from '../content/data';
+import { BACKGROUNDS, ATTR_LABEL, officeDef, PARTIES, GOV_STYLES } from '../content/data';
+import { ASPIRATIONS, CITIES } from '../content/life';
 
 type P = { g: GameState };
 
@@ -15,11 +16,12 @@ export function NewGame() {
   const [gender, setGender] = useState<'L' | 'P'>('L');
   const [bg, setBg] = useState('menengah');
   const [boost, setBoost] = useState<AttrKey>('karisma');
+  const [asp, setAsp] = useState('bebas');
   return (
     <Modal wide>
       <div className="title-block">
         <h1 className="ic center"><Landmark size={30} />NAGARI</h1>
-        <p>Jalan menuju istana. Dari lulus SMA sampai kursi presiden, atau gagal di tengah jalan.</p>
+        <p>Satu kehidupan, dari lulus SMA sampai usia senja. Jadi presiden, profesor, pengusaha, seniman, atau sekadar orang yang bahagia.</p>
       </div>
       <label className="field"><span>Nama</span><input value={name} maxLength={28} onChange={e => setName(e.target.value)} placeholder="Nama tokohmu" autoFocus /></label>
       <div className="row">
@@ -31,7 +33,15 @@ export function NewGame() {
         {BACKGROUNDS.map(b => (
           <button key={b.id} className={`pick ${bg === b.id ? 'on' : ''}`} onClick={() => setBg(b.id)}>
             <b>{b.name}</b><span>{b.desc}</span>
-            <span className="crit">Bekal dari keluarga: {rupiah(b.money)}</span>
+            <span className="crit">Uang saku {rupiah(b.family.allowance)}/bln · sanggup biayai kuliah {rupiah(b.family.tuitionCap)}/bln · tumbuh di {CITIES.find(x => x.id === b.home)?.short.toLowerCase()}</span>
+          </button>
+        ))}
+      </div>
+      <h4>Cita-cita</h4>
+      <div className="grid2">
+        {ASPIRATIONS.map(a => (
+          <button key={a.id} className={`pick ${asp === a.id ? 'on' : ''}`} onClick={() => setAsp(a.id)}>
+            <b>{a.name}</b><span>{a.desc}</span><span className="crit">{a.goal}</span>
           </button>
         ))}
       </div>
@@ -42,7 +52,7 @@ export function NewGame() {
         ))}
       </div>
       <div className="row end">
-        <Btn kind="primary" onClick={() => start({ name: name.trim() || 'Raka Nagari', gender, background: bg, boost })}><Play size={15} />Mulai hidup</Btn>
+        <Btn kind="primary" onClick={() => start({ name: name.trim() || 'Raka Nagari', gender, background: bg, boost, aspiration: asp })}><Play size={15} />Mulai hidup</Btn>
       </div>
       <p className="muted">Setiap pilihan dicatat. Sebagian akibatnya baru datang bertahun-tahun kemudian.</p>
     </Modal>
@@ -153,6 +163,39 @@ export function HistoryModal({ g }: P) {
           </div>
         ))}
       </div>
+    </Modal>
+  );
+}
+
+export function BallotModal({ g }: P) {
+  const act = useStore(s => s.act);
+  const b = g.ballot!;
+  const [pick, setPick] = useState(0);
+  const [party, setParty] = useState<string | null>(g.char.party);
+  const [endorse, setEndorse] = useState(false);
+  return (
+    <Modal tone="">
+      <h2 className="ic"><Vote size={20} />Hari pencoblosan</h2>
+      <p className="event-text">TPS di dekat tempat tinggalmu sudah dibuka sejak pukul tujuh. Pemilu serentak: presiden dan DPR. Siapa pilihanmu?</p>
+      <div className="choices">
+        {b.cands.map((c, i) => {
+          const st = GOV_STYLES.find(x => x.id === c.style);
+          const pt = PARTIES.find(p => p.id === c.party);
+          return (
+            <button key={i} className={`choice ${pick === i ? 'on' : ''}`} onClick={() => setPick(i)}>
+              <b>{c.name}{c.incumbent ? ' (petahana)' : ''} · <span style={{ color: pt?.color }}>{pt?.short ?? 'independen'}</span></b>
+              <span className="muted">Visi {st?.name.toLowerCase()}: {st?.desc}</span>
+            </button>
+          );
+        })}
+        <button className={`choice ${pick === -1 ? 'on' : ''}`} onClick={() => setPick(-1)}><b>Golput</b><span className="muted">Tidak memilih siapa pun.</span></button>
+      </div>
+      <div className="slot">
+        <label className="muted">Partai untuk DPR: </label>
+        <Select value={party ?? ''} onChange={v => setParty(v || null)} options={[{ value: '', label: 'Tidak memilih' }, ...PARTIES.map(p => ({ value: p.id, label: <><span style={{ color: p.color }}>{p.short}</span> · {p.name}</>, hint: `${p.ideology} · ${g.seats[p.id]}% kursi DPR` }))]} />
+      </div>
+      {g.char.pop.nasional >= 25 && pick >= 0 && <label className="row"><input type="checkbox" checked={endorse} onChange={e => setEndorse(e.target.checked)} /> Umumkan dukungan secara terbuka (kamu cukup dikenal)</label>}
+      <div className="row end"><Btn kind="primary" onClick={() => act({ type: 'vote', index: pick, party, endorse })}>{pick === -1 ? 'Tidak datang ke TPS' : 'Coblos'}<ChevronRight size={15} /></Btn></div>
     </Modal>
   );
 }

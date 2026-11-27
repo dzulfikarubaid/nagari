@@ -1,71 +1,127 @@
-import type { Budget, Job, Habit, Major, Campus, Party, Policy, Country, CampaignPromise, MinistryId, OfficeId, Level, Fx, AttrKey, SectorKey, NationKey, RegionKey } from '../sim/types';
+import type { CityTier, Budget, Job, Habit, Major, Campus, Party, Policy, Country, CampaignPromise, MinistryId, OfficeId, Level, Fx, AttrKey, SectorKey, NationKey, RegionKey } from '../sim/types';
 
 // ---------- Latar keluarga ----------
-export interface Background { id: string; name: string; desc: string; money: number; attr: Partial<Record<AttrKey, number>>; flags: string[] }
+export interface Background { id: string; name: string; desc: string; money: number; family: { fund: number; allowance: number; tuitionCap: number }; attr: Partial<Record<AttrKey, number>>; flags: string[]; home: CityTier }
 export const BACKGROUNDS: Background[] = [
-  { id: 'petani', name: 'Anak petani desa', desc: 'Hidup pas-pasan, tapi dikenal dan dipercaya warga kampung.', money: 5, attr: { integritas: 8, kesehatan: 8, jaringan: -8 }, flags: ['latar:petani'] },
-  { id: 'menengah', name: 'Keluarga pegawai', desc: 'Cukup untuk sekolah, tanpa koneksi istimewa.', money: 40, attr: { kecerdasan: 5 }, flags: ['latar:menengah'] },
-  { id: 'pengusaha', name: 'Anak pengusaha', desc: 'Modal besar dan kenalan bisnis, tapi dianggap jauh dari rakyat.', money: 400, attr: { jaringan: 10, integritas: -5, karisma: 3 }, flags: ['latar:kaya'] },
-  { id: 'dinasti', name: 'Dinasti politik', desc: 'Nama besar keluarga membuka pintu partai, sekaligus membawa musuh lama.', money: 250, attr: { jaringan: 18, karisma: 5, integritas: -8 }, flags: ['latar:dinasti'] },
-  { id: 'santri', name: 'Keluarga pesantren', desc: 'Dihormati kalangan religius, jaringan ulama luas.', money: 15, attr: { integritas: 10, karisma: 5, jaringan: 4 }, flags: ['latar:santri'] },
+  { id: 'petani', name: 'Anak petani desa', desc: 'Hidup pas-pasan, tapi dikenal dan dipercaya warga kampung.', money: 5, family: { fund: 10, allowance: 0.5, tuitionCap: 0.8 }, attr: { integritas: 8, kesehatan: 8, jaringan: -8 }, flags: ['latar:petani'], home: 'desa' },
+  { id: 'menengah', name: 'Keluarga pegawai', desc: 'Cukup untuk sekolah, tanpa koneksi istimewa.', money: 40, family: { fund: 90, allowance: 1.5, tuitionCap: 3 }, attr: { kecerdasan: 5 }, flags: ['latar:menengah'], home: 'kabupaten' },
+  { id: 'pengusaha', name: 'Anak pengusaha', desc: 'Modal besar dan kenalan bisnis, tapi dianggap jauh dari rakyat.', money: 400, family: { fund: 2500, allowance: 6, tuitionCap: 50 }, attr: { jaringan: 10, integritas: -5, karisma: 3 }, flags: ['latar:kaya'], home: 'provinsi' },
+  { id: 'dinasti', name: 'Dinasti politik', desc: 'Nama besar keluarga membuka pintu partai, sekaligus membawa musuh lama.', money: 250, family: { fund: 1500, allowance: 5, tuitionCap: 40 }, attr: { jaringan: 18, karisma: 5, integritas: -8 }, flags: ['latar:dinasti'], home: 'ibukota' },
+  { id: 'santri', name: 'Keluarga pesantren', desc: 'Dihormati kalangan religius, jaringan ulama luas.', money: 15, family: { fund: 25, allowance: 0.7, tuitionCap: 1.2 }, attr: { integritas: 10, karisma: 5, jaringan: 4 }, flags: ['latar:santri'], home: 'desa' },
 ];
 
 // ---------- Pendidikan ----------
 export const MAJORS: Major[] = [
-  { id: 'hukum', name: 'Hukum', desc: 'Jalan ke pengacara, jaksa, dan pembuat undang-undang.', growth: { kecerdasan: 0.35, karisma: 0.15 } },
-  { id: 'ekonomi', name: 'Ekonomi & Bisnis', desc: 'Paham uang, pasar, dan anggaran.', growth: { kecerdasan: 0.35, jaringan: 0.15 } },
-  { id: 'teknik', name: 'Teknik', desc: 'Insinyur pembangun; kuat di infrastruktur.', growth: { kecerdasan: 0.45 } },
-  { id: 'kedokteran', name: 'Kedokteran', desc: 'Lama dan berat, tapi dokter selalu dihormati.', growth: { kecerdasan: 0.45, integritas: 0.1, stres: 0.25 } },
-  { id: 'pendidikan', name: 'Keguruan', desc: 'Mendidik generasi; dekat dengan warga.', growth: { kecerdasan: 0.25, integritas: 0.15, karisma: 0.1 } },
-  { id: 'pertanian', name: 'Pertanian', desc: 'Ilmu pangan dan desa.', growth: { kecerdasan: 0.25, kesehatan: 0.1, integritas: 0.1 } },
-  { id: 'politik', name: 'Ilmu Politik', desc: 'Organisasi kampus, debat, dan jaringan aktivis.', growth: { karisma: 0.35, jaringan: 0.25, kecerdasan: 0.15 } },
-  { id: 'komunikasi', name: 'Komunikasi', desc: 'Media, citra, dan cara bicara ke publik.', growth: { karisma: 0.45, jaringan: 0.15 } },
-  { id: 'militer', name: 'Ilmu Militer', desc: 'Hanya di Akademi Militer. Disiplin dan komando.', growth: { kesehatan: 0.3, karisma: 0.2, kecerdasan: 0.15 } },
+  { id: 'hukum', name: 'Hukum', desc: 'Jalan ke pengacara, jaksa, dan pembuat undang-undang.', growth: { kecerdasan: 0.35, karisma: 0.15 }, research: false, topics: [] },
+  { id: 'ekonomi', name: 'Ekonomi & Bisnis', desc: 'Paham uang, pasar, dan anggaran.', growth: { kecerdasan: 0.35, jaringan: 0.15 }, research: true, topics: ['Dampak bantuan tunai terhadap konsumsi desa', 'Ekonomi digital dan UMKM', 'Ketimpangan upah antardaerah'] },
+  { id: 'teknik', name: 'Teknik', desc: 'Insinyur pembangun; kuat di infrastruktur.', growth: { kecerdasan: 0.45 }, research: true, topics: ['Beton ramah lingkungan dari limbah sawit', 'Jembatan tahan gempa berbiaya rendah', 'Panel surya untuk pulau terpencil'] },
+  { id: 'informatika', name: 'Informatika', desc: 'Pemrograman, data, dan kecerdasan buatan. Lowongannya ada di mana-mana.', growth: { kecerdasan: 0.45, jaringan: 0.05 }, research: true, topics: ['Model bahasa untuk bahasa daerah', 'Deteksi hoaks otomatis', 'Sistem peringatan dini banjir berbasis sensor'] },
+  { id: 'mipa', name: 'Sains (MIPA)', desc: 'Matematika, fisika, kimia, biologi. Fondasi semua penemuan.', growth: { kecerdasan: 0.5 }, research: true, topics: ['Senyawa antikanker dari tanaman hutan', 'Pemodelan iklim kepulauan', 'Bakteri pengurai plastik'] },
+  { id: 'kedokteran', name: 'Kedokteran', desc: 'Lama dan berat, tapi dokter selalu dihormati.', growth: { kecerdasan: 0.45, integritas: 0.1, stres: 0.25 }, research: true, topics: ['Tengkes pada balita di desa', 'Resistansi antibiotik di puskesmas', 'Vaksin demam berdarah'] },
+  { id: 'farmasi', name: 'Farmasi', desc: 'Obat, racikan, dan laboratorium.', growth: { kecerdasan: 0.4, integritas: 0.05 }, research: true, topics: ['Obat herbal terstandar', 'Formulasi obat anak', 'Kualitas obat generik'] },
+  { id: 'keperawatan', name: 'Keperawatan', desc: 'Garda depan rumah sakit; dibutuhkan sampai luar negeri.', growth: { kecerdasan: 0.25, integritas: 0.15, kesehatan: 0.05 }, research: false, topics: [] },
+  { id: 'psikologi', name: 'Psikologi', desc: 'Memahami pikiran dan perilaku manusia.', growth: { kecerdasan: 0.3, karisma: 0.15 }, research: true, topics: ['Kesehatan mental pekerja ojek daring', 'Perundungan di sekolah', 'Kecanduan gawai pada remaja'] },
+  { id: 'pendidikan', name: 'Keguruan', desc: 'Mendidik generasi; dekat dengan warga.', growth: { kecerdasan: 0.25, integritas: 0.15, karisma: 0.1 }, research: false, topics: [] },
+  { id: 'pertanian', name: 'Pertanian', desc: 'Ilmu pangan dan desa.', growth: { kecerdasan: 0.25, kesehatan: 0.1, integritas: 0.1 }, research: true, topics: ['Padi tahan kekeringan', 'Pupuk hayati dari limbah ternak', 'Pertanian presisi dengan drone'] },
+  { id: 'politik', name: 'Ilmu Politik', desc: 'Organisasi kampus, debat, dan jaringan aktivis.', growth: { karisma: 0.35, jaringan: 0.25, kecerdasan: 0.15 }, research: false, topics: [] },
+  { id: 'hi', name: 'Hubungan Internasional', desc: 'Diplomasi, geopolitik, dan bahasa asing.', growth: { kecerdasan: 0.3, karisma: 0.2, jaringan: 0.1 }, research: false, topics: [] },
+  { id: 'komunikasi', name: 'Komunikasi', desc: 'Media, citra, dan cara bicara ke publik.', growth: { karisma: 0.45, jaringan: 0.15 }, research: false, topics: [] },
+  { id: 'seni', name: 'Seni & Desain', desc: 'Desain grafis, film, musik, dan rupa.', growth: { karisma: 0.35, kecerdasan: 0.15, stres: -0.05 }, research: false, topics: [] },
+  { id: 'sastra', name: 'Sastra & Bahasa', desc: 'Membaca, menulis, menerjemahkan.', growth: { kecerdasan: 0.3, karisma: 0.15 }, research: false, topics: [] },
+  { id: 'militer', name: 'Ilmu Militer', desc: 'Hanya di Akademi Militer. Disiplin dan komando.', growth: { kesehatan: 0.3, karisma: 0.2, kecerdasan: 0.15 }, research: false, topics: [] },
 ];
 
 export const CAMPUSES: Campus[] = [
-  { id: 'negeri_favorit', name: 'Universitas Nagari (negeri favorit)', desc: 'Seleksi ketat, biaya ringan, alumni menguasai birokrasi dan partai.', costPerMonth: 2, quality: 1.3, network: 1.4, need: { kecerdasan: 58 }, months: 48 },
-  { id: 'negeri_daerah', name: 'Universitas Negeri Daerah', desc: 'Dekat rumah, murah, jaringan lokal.', costPerMonth: 1.5, quality: 1.0, network: 0.8, need: { kecerdasan: 42 }, months: 48 },
-  { id: 'swasta', name: 'Universitas Swasta Kota', desc: 'Siapa saja bisa masuk asal sanggup bayar.', costPerMonth: 6, quality: 0.9, network: 1.0, months: 48 },
-  { id: 'luar_negeri', name: 'Kampus luar negeri', desc: 'Mahal sekali atau beasiswa (kecerdasan 75+). Gengsi nasional, tapi jauh dari akar rumput.', costPerMonth: 30, quality: 1.5, network: 1.2, months: 48 },
-  { id: 'akmil', name: 'Akademi Militer', desc: 'Gratis, fisik berat. Otomatis jurusan militer dan ikatan dinas tentara.', costPerMonth: 0, quality: 1.1, network: 1.2, need: { kesehatan: 65 }, months: 48 },
-  { id: 'kedinasan', name: 'Sekolah Kedinasan', desc: 'Gratis, langsung jadi PNS setelah lulus.', costPerMonth: 0, quality: 1.0, network: 1.0, need: { kecerdasan: 55 }, months: 48 },
+  { id: 'negeri_favorit', name: 'Universitas Nagari (negeri favorit)', desc: 'Seleksi ketat, biaya ringan, alumni menguasai birokrasi dan partai.', costPerMonth: 2, quality: 1.3, network: 1.4, need: { kecerdasan: 58 }, months: 48, city: 'pelajar', levels: ['S1', 'S2', 'S3'] },
+  { id: 'iup', name: 'Universitas Nagari — Kelas Internasional (IUP)', desc: 'Kuliah berbahasa Inggris; tahun ketiga di kampus mitra luar negeri, lulus dengan dua ijazah.', costPerMonth: 10, quality: 1.35, network: 1.5, months: 48, city: 'pelajar', lang: 6, levels: ['S1'], iup: true },
+  { id: 'negeri_daerah', name: 'Universitas Negeri Daerah', desc: 'Dekat rumah, murah, jaringan lokal.', costPerMonth: 1.5, quality: 1.0, network: 0.8, need: { kecerdasan: 42 }, months: 48, city: 'provinsi', levels: ['S1', 'S2'] },
+  { id: 'swasta', name: 'Universitas Swasta Kota', desc: 'Siapa saja bisa masuk asal sanggup bayar.', costPerMonth: 6, quality: 0.9, network: 1.0, months: 48, city: 'provinsi', levels: ['S1', 'S2'] },
+  { id: 'luar_negeri', name: 'Universitas Atlantika', desc: 'Kampus terbaik dunia di Port Liberty. Mahal sekali kecuali dapat beasiswa.', costPerMonth: 45, quality: 1.55, network: 1.3, months: 48, city: 'atlantika', lang: 6.5, abroad: true, levels: ['S1', 'S2', 'S3'] },
+  { id: 'australis_u', name: 'Universitas Sydnea (Australis)', desc: 'Kampus besar yang ramah mahasiswa Nagari; boleh kerja paruh waktu.', costPerMonth: 32, quality: 1.4, network: 1.15, months: 48, city: 'australis', lang: 6.5, abroad: true, levels: ['S1', 'S2', 'S3'] },
+  { id: 'temasik_u', name: 'Universitas Nasional Temasik', desc: 'Peringkat atas Asia, dekat rumah, persaingan keras.', costPerMonth: 28, quality: 1.45, network: 1.3, months: 48, city: 'temasik', lang: 6, abroad: true, levels: ['S1', 'S2', 'S3'] },
+  { id: 'tiongkara_u', name: 'Universitas Teknologi Jingbei (Tiongkara)', desc: 'Laboratorium raksasa, biaya lebih ringan, kelas internasional berbahasa Inggris.', costPerMonth: 16, quality: 1.3, network: 1.0, months: 48, city: 'tiongkara', lang: 5.5, abroad: true, levels: ['S1', 'S2', 'S3'] },
+  { id: 'akmil', name: 'Akademi Militer', desc: 'Gratis, fisik berat. Otomatis jurusan militer dan ikatan dinas tentara.', costPerMonth: 0, quality: 1.1, network: 1.2, need: { kesehatan: 65 }, months: 48, city: 'kabupaten', levels: ['S1'] },
+  { id: 'kedinasan', name: 'Sekolah Kedinasan', desc: 'Gratis, langsung jadi PNS setelah lulus.', costPerMonth: 0, quality: 1.0, network: 1.0, need: { kecerdasan: 55 }, months: 48, city: 'ibukota', levels: ['S1'] },
 ];
 export const S2_MONTHS = 24;
+export const S3_MONTHS = 48;
 
 // ---------- Pekerjaan ----------
+const D: CityTier[] = ['desa', 'kabupaten', 'provinsi', 'pelajar', 'ibukota'];
+export const JOB_GROUPS = ['Tanpa gelar', 'Profesional & kantor', 'Kesehatan', 'Negara & hukum', 'Akademik & riset', 'Kreatif & media', 'Bisnis', 'Sosial & politik'];
 export const JOBS: Job[] = [
-  { id: 'buruh', name: 'Buruh pabrik', desc: 'Kerja sif di pabrik bersama ribuan buruh lain.', income: 3.5, growth: { kesehatan: -0.03, stres: 0.1 }, pop: { desa: 0.05 } },
-  { id: 'petani', name: 'Petani', desc: 'Menggarap sawah dan ladang di kampung.', income: 3, growth: { kesehatan: 0.05, integritas: 0.03 }, pop: { desa: 0.2 } },
-  { id: 'pedagang', name: 'Pedagang', desc: 'Buka lapak di pasar.', income: 6, growth: { jaringan: 0.12, karisma: 0.05 }, pop: { desa: 0.1, kabupaten: 0.05 } },
-  { id: 'guru', name: 'Guru', desc: 'Mengajar di sekolah.', income: 5, growth: { kecerdasan: 0.08, integritas: 0.05 }, pop: { desa: 0.15, kabupaten: 0.06 }, need: { degree: true, majors: ['pendidikan', 'pertanian', 'politik', 'komunikasi', 'ekonomi', 'hukum', 'teknik'] } },
-  { id: 'pns', name: 'Pegawai negeri', desc: 'Pegawai kantor pemerintah.', income: 7, growth: { kecerdasan: 0.05, jaringan: 0.08 }, pop: { kabupaten: 0.05 }, need: { degree: true } },
-  { id: 'tentara', name: 'Tentara', desc: 'Prajurit angkatan bersenjata.', income: 7, growth: { kesehatan: 0.1, karisma: 0.08 }, pop: { kabupaten: 0.04, nasional: 0.02 }, need: { attr: { kesehatan: 60 } } },
-  { id: 'pengacara', name: 'Pengacara', desc: 'Membela klien di pengadilan.', income: 14, growth: { kecerdasan: 0.08, karisma: 0.1, jaringan: 0.08 }, pop: { kabupaten: 0.05, provinsi: 0.03 }, need: { degree: true, majors: ['hukum'] } },
-  { id: 'jurnalis', name: 'Jurnalis', desc: 'Meliput dan menulis berita.', income: 6, growth: { kecerdasan: 0.08, jaringan: 0.1 }, pop: { provinsi: 0.06, nasional: 0.05 }, need: { attr: { kecerdasan: 50 } } },
-  { id: 'aktivis', name: 'Aktivis LSM', desc: 'Mendampingi warga dan mengkritik pejabat.', income: 3, growth: { karisma: 0.12, integritas: 0.08, stres: 0.08 }, pop: { kabupaten: 0.1, provinsi: 0.06, nasional: 0.04 } },
-  { id: 'dokter', name: 'Dokter', desc: 'Mengobati pasien di rumah sakit atau puskesmas.', income: 18, growth: { kecerdasan: 0.06, integritas: 0.04, stres: 0.1 }, pop: { desa: 0.12, kabupaten: 0.1 }, need: { degree: true, majors: ['kedokteran'] } },
-  { id: 'insinyur', name: 'Insinyur', desc: 'Merancang dan mengawasi proyek jalan, gedung, dan pabrik.', income: 12, growth: { kecerdasan: 0.1 }, pop: { kabupaten: 0.03 }, need: { degree: true, majors: ['teknik'] } },
-  { id: 'dosen', name: 'Dosen', desc: 'Mengajar dan meneliti di kampus.', income: 9, growth: { kecerdasan: 0.15, karisma: 0.04 }, pop: { provinsi: 0.05, nasional: 0.04 }, need: { degree: true, attr: { kecerdasan: 65 } } },
-  { id: 'pengusaha', name: 'Pengusaha', desc: 'Menjalankan usaha sendiri. Butuh modal 200 juta.', income: 25, growth: { jaringan: 0.15, integritas: -0.04, stres: 0.1 }, pop: { kabupaten: 0.04, provinsi: 0.03 }, need: { attr: { jaringan: 45 } }, heat: 0.05 },
-  { id: 'influencer', name: 'Selebritas media sosial', desc: 'Membuat konten untuk jutaan penonton.', income: 8, growth: { karisma: 0.15, kecerdasan: -0.03 }, pop: { nasional: 0.22, provinsi: 0.1 }, need: { attr: { karisma: 60 } } },
-  { id: 'staf_partai', name: 'Staf partai', desc: 'Bekerja di kantor partai. Harus anggota partai.', income: 5, growth: { jaringan: 0.18, karisma: 0.05, integritas: -0.03 }, pop: { kabupaten: 0.04 }, need: {} },
+  { id: 'buruh', group: 'Tanpa gelar', name: 'Buruh pabrik', desc: 'Kerja sif di pabrik bersama ribuan buruh lain. Bisa juga jadi pekerja migran di luar negeri.', income: 3.5, growth: { kesehatan: -0.03, stres: 0.1 }, pop: { desa: 0.05 }, abroadOk: true },
+  { id: 'petani', group: 'Tanpa gelar', name: 'Petani', desc: 'Menggarap sawah dan ladang. Hanya di desa.', income: 3, growth: { kesehatan: 0.05, integritas: 0.03 }, pop: { desa: 0.2 }, where: ['desa'], volatile: 0.3 },
+  { id: 'pedagang', group: 'Tanpa gelar', name: 'Pedagang', desc: 'Buka lapak di pasar.', income: 6, growth: { jaringan: 0.12, karisma: 0.05 }, pop: { desa: 0.1, kabupaten: 0.05 }, where: D, volatile: 0.75 },
+  { id: 'ojol', group: 'Tanpa gelar', name: 'Pengemudi ojek daring', desc: 'Antar penumpang dan makanan. Jam kerja bebas, penghasilan tergantung aplikasi.', income: 4, growth: { jaringan: 0.05, kesehatan: -0.03, stres: 0.08 }, pop: { kabupaten: 0.03 }, volatile: 0.3 },
+  { id: 'koki', group: 'Tanpa gelar', name: 'Juru masak', desc: 'Dari dapur warung sampai dapur hotel. Bisa membawamu ke kapal pesiar.', income: 4.5, growth: { karisma: 0.03, stres: 0.06 }, pop: { kabupaten: 0.02 }, abroadOk: true, ranks: ['Asisten dapur', 'Juru masak', 'Kepala bagian', 'Kepala koki', 'Koki selebritas'] },
+  { id: 'atlet', group: 'Tanpa gelar', name: 'Atlet profesional', desc: 'Klub, pelatnas, dan medali. Karier pendek, sorot lampu terang.', income: 6, growth: { kesehatan: 0.15, karisma: 0.06 }, pop: { provinsi: 0.05, nasional: 0.06 }, need: { attr: { kesehatan: 70 }, maxAge: 26 }, ranks: ['Pemain muda', 'Pemain inti', 'Pemain nasional', 'Kapten timnas', 'Legenda'] },
+  { id: 'programmer', group: 'Profesional & kantor', name: 'Programmer', desc: 'Membangun aplikasi dan sistem. Banyak yang belajar otodidak.', income: 9, growth: { kecerdasan: 0.1, stres: 0.06 }, pop: {}, need: { attr: { kecerdasan: 55 } }, abroadOk: true, ranks: ['Junior', 'Menengah', 'Senior', 'Lead engineer', 'Kepala teknologi'] },
+  { id: 'data', group: 'Profesional & kantor', name: 'Analis data', desc: 'Mengubah angka jadi keputusan.', income: 10, growth: { kecerdasan: 0.1 }, pop: {}, need: { degree: true, majors: ['informatika', 'mipa', 'ekonomi', 'teknik', 'psikologi'] }, abroadOk: true },
+  { id: 'insinyur', group: 'Profesional & kantor', name: 'Insinyur', desc: 'Merancang dan mengawasi proyek jalan, gedung, dan pabrik.', income: 12, growth: { kecerdasan: 0.1 }, pop: { kabupaten: 0.03 }, need: { degree: true, majors: ['teknik'] }, abroadOk: true },
+  { id: 'akuntan', group: 'Profesional & kantor', name: 'Akuntan', desc: 'Pembukuan, audit, dan pajak.', income: 9, growth: { kecerdasan: 0.07, integritas: 0.02 }, pop: {}, need: { degree: true, majors: ['ekonomi'] }, abroadOk: true },
+  { id: 'bankir', group: 'Profesional & kantor', name: 'Bankir', desc: 'Kredit, nasabah, dan target bulanan.', income: 11, growth: { jaringan: 0.1, stres: 0.08 }, pop: {}, need: { degree: true }, abroadOk: true },
+  { id: 'konsultan', group: 'Profesional & kantor', name: 'Konsultan manajemen', desc: 'Presentasi untuk direksi, lembur untuk diri sendiri.', income: 16, growth: { kecerdasan: 0.08, jaringan: 0.1, stres: 0.12 }, pop: {}, need: { degree: true, attr: { kecerdasan: 62 } }, where: ['provinsi', 'ibukota'], abroadOk: true },
+  { id: 'pns', group: 'Negara & hukum', name: 'Pegawai negeri', desc: 'Pegawai kantor pemerintah, dari kantor desa sampai kementerian.', income: 7, growth: { kecerdasan: 0.05, jaringan: 0.08 }, pop: { kabupaten: 0.05 }, need: { degree: true }, where: D },
+  { id: 'tentara', group: 'Negara & hukum', name: 'Tentara', desc: 'Prajurit angkatan bersenjata.', income: 7, growth: { kesehatan: 0.1, karisma: 0.08 }, pop: { kabupaten: 0.04, nasional: 0.02 }, need: { attr: { kesehatan: 60 } }, where: D, ranks: ['Letnan', 'Kapten', 'Mayor', 'Kolonel', 'Jenderal'] },
+  { id: 'polisi', group: 'Negara & hukum', name: 'Polisi', desc: 'Menjaga ketertiban. Godaan "uang damai" ada di setiap tikungan.', income: 6.5, growth: { kesehatan: 0.06, karisma: 0.05 }, pop: { kabupaten: 0.05 }, need: { attr: { kesehatan: 58 }, maxAge: 28 }, where: D, heat: 0.02, ranks: ['Inspektur', 'Ajun komisaris', 'Komisaris', 'Komisaris besar', 'Jenderal polisi'] },
+  { id: 'pengacara', group: 'Negara & hukum', name: 'Pengacara', desc: 'Membela klien di pengadilan.', income: 14, growth: { kecerdasan: 0.08, karisma: 0.1, jaringan: 0.08 }, pop: { kabupaten: 0.05, provinsi: 0.03 }, need: { degree: true, majors: ['hukum'] } },
+  { id: 'jaksa', group: 'Negara & hukum', name: 'Jaksa', desc: 'Penuntut umum. Kasus besar bisa membuatmu terkenal, atau kaya.', income: 9, growth: { kecerdasan: 0.07, integritas: 0.03 }, pop: { provinsi: 0.04 }, need: { degree: true, majors: ['hukum'] } },
+  { id: 'diplomat', group: 'Negara & hukum', name: 'Diplomat', desc: 'Kementerian luar negeri; ditempatkan bergantian di kedutaan.', income: 10, growth: { karisma: 0.08, jaringan: 0.12, kecerdasan: 0.05 }, pop: { nasional: 0.03 }, need: { degree: true, majors: ['hi', 'hukum', 'politik', 'ekonomi', 'sastra'] }, where: ['ibukota'], ranks: ['Atase', 'Sekretaris', 'Konselor', 'Minister', 'Duta besar'] },
+  { id: 'dokter', group: 'Kesehatan', name: 'Dokter', desc: 'Mengobati pasien di rumah sakit atau puskesmas.', income: 18, growth: { kecerdasan: 0.06, integritas: 0.04, stres: 0.1 }, pop: { desa: 0.12, kabupaten: 0.1 }, need: { degree: true, majors: ['kedokteran'] }, where: D, ranks: ['Dokter umum', 'Dokter senior', 'Dokter spesialis', 'Konsultan', 'Direktur rumah sakit'], gate: [{ level: 2, degree: 'S2', note: 'Jadi spesialis butuh pendidikan spesialis (S2)' }] },
+  { id: 'perawat', group: 'Kesehatan', name: 'Perawat', desc: 'Merawat pasien siang malam. Dicari sampai ke luar negeri.', income: 5.5, growth: { integritas: 0.05, stres: 0.08 }, pop: { desa: 0.06 }, need: { degree: true, majors: ['keperawatan'] }, where: D, abroadOk: true },
+  { id: 'apoteker', group: 'Kesehatan', name: 'Apoteker', desc: 'Apotek, rumah sakit, atau pabrik obat.', income: 8, growth: { kecerdasan: 0.05 }, pop: {}, need: { degree: true, majors: ['farmasi'] } },
+  { id: 'psikolog', group: 'Kesehatan', name: 'Psikolog', desc: 'Konseling dan asesmen. Wajib profesi S2.', income: 9, growth: { kecerdasan: 0.05, karisma: 0.05, stres: 0.04 }, pop: {}, need: { degree: true, majors: ['psikologi'], level: 'S2' } },
+  { id: 'guru', group: 'Akademik & riset', name: 'Guru', desc: 'Mengajar di sekolah.', income: 5, growth: { kecerdasan: 0.08, integritas: 0.05 }, pop: { desa: 0.15, kabupaten: 0.06 }, need: { degree: true, majors: ['pendidikan', 'pertanian', 'politik', 'komunikasi', 'ekonomi', 'hukum', 'teknik', 'mipa', 'sastra', 'seni', 'informatika'] }, where: D },
+  { id: 'dosen', group: 'Akademik & riset', name: 'Dosen', desc: 'Mengajar dan meneliti di kampus.', income: 9, growth: { kecerdasan: 0.15, karisma: 0.04 }, pop: { provinsi: 0.05, nasional: 0.04 }, need: { degree: true, level: 'S2', attr: { kecerdasan: 65 } }, abroadOk: true, ranks: ['Asisten ahli', 'Lektor', 'Lektor kepala', 'Guru besar', 'Rektor'], gate: [{ level: 2, degree: 'S3', note: 'Lektor kepala butuh gelar doktor (S3)' }, { level: 3, degree: 'S3', pubs: 8, note: 'Guru besar butuh S3 dan 8 publikasi' }] },
+  { id: 'peneliti', group: 'Akademik & riset', name: 'Peneliti', desc: 'Pusat Riset Nagari: laboratorium, hibah, dan jurnal.', income: 9, growth: { kecerdasan: 0.15 }, pop: { nasional: 0.02 }, need: { degree: true, level: 'S2', majors: ['teknik', 'informatika', 'mipa', 'kedokteran', 'farmasi', 'pertanian', 'ekonomi', 'psikologi'] }, abroadOk: true, ranks: ['Peneliti pertama', 'Peneliti muda', 'Peneliti madya', 'Peneliti utama', 'Profesor riset'], gate: [{ level: 2, degree: 'S3', note: 'Peneliti madya butuh gelar doktor (S3)' }, { level: 4, pubs: 10, note: 'Profesor riset butuh 10 publikasi' }] },
+  { id: 'jurnalis', group: 'Kreatif & media', name: 'Jurnalis', desc: 'Meliput dan menulis berita.', income: 6, growth: { kecerdasan: 0.08, jaringan: 0.1 }, pop: { provinsi: 0.06, nasional: 0.05 }, need: { attr: { kecerdasan: 50 } } },
+  { id: 'desainer', group: 'Kreatif & media', name: 'Desainer grafis', desc: 'Logo, kemasan, kampanye iklan.', income: 6, growth: { karisma: 0.06, kecerdasan: 0.04 }, pop: {}, abroadOk: true },
+  { id: 'influencer', group: 'Kreatif & media', name: 'Selebritas media sosial', desc: 'Membuat konten untuk jutaan penonton.', income: 8, growth: { karisma: 0.15, kecerdasan: -0.03 }, pop: { nasional: 0.22, provinsi: 0.1 }, need: { attr: { karisma: 60 } }, where: D, abroadOk: true, volatile: 0.55 },
+  { id: 'musisi', group: 'Kreatif & media', name: 'Musisi', desc: 'Panggung kafe, lalu festival, lalu (semoga) stadion.', income: 5, growth: { karisma: 0.12, stres: 0.05 }, pop: { provinsi: 0.05, nasional: 0.08 }, need: { attr: { karisma: 52 } }, volatile: 0.8 },
+  { id: 'penulis', group: 'Kreatif & media', name: 'Penulis', desc: 'Novel, naskah film, kolom koran. Royalti datang tak menentu.', income: 4, growth: { kecerdasan: 0.12 }, pop: { nasional: 0.05 }, need: { attr: { kecerdasan: 52 } }, where: D, abroadOk: true, volatile: 0.9 },
+  { id: 'pengusaha', group: 'Bisnis', name: 'Pengusaha', desc: 'Menjalankan usaha sendiri. Butuh modal 200 juta.', income: 25, growth: { jaringan: 0.15, integritas: -0.04, stres: 0.1 }, pop: { kabupaten: 0.04, provinsi: 0.03 }, need: { attr: { jaringan: 45 }, capital: 200 }, heat: 0.05, volatile: 0.75 },
+  { id: 'startup', group: 'Bisnis', name: 'Pendiri startup', desc: 'Bakar uang investor, kejar pertumbuhan, berharap tidak tutup. Modal awal 50 juta.', income: 12, growth: { kecerdasan: 0.08, jaringan: 0.12, stres: 0.2 }, pop: { nasional: 0.04 }, need: { attr: { kecerdasan: 55, jaringan: 35 }, capital: 50 }, where: ['provinsi', 'pelajar', 'ibukota'], abroadOk: true, volatile: 1.1, ranks: ['Tahap ide', 'Seed', 'Seri A', 'Seri B', 'Unicorn'] },
+  { id: 'aktivis', group: 'Sosial & politik', name: 'Aktivis LSM', desc: 'Mendampingi warga dan mengkritik pejabat.', income: 3, growth: { karisma: 0.12, integritas: 0.08, stres: 0.08 }, pop: { kabupaten: 0.1, provinsi: 0.06, nasional: 0.04 }, where: D },
+  { id: 'staf_partai', group: 'Sosial & politik', name: 'Staf partai', desc: 'Bekerja di kantor partai. Harus anggota partai.', income: 5, growth: { jaringan: 0.18, karisma: 0.05, integritas: -0.03 }, pop: { kabupaten: 0.04 }, need: {} },
 ];
 export const JOB_LEVEL_MULT = [1, 1.6, 2.6, 4.2, 6.5];
 export const JOB_LEVEL_NAMES = ['pemula', 'berpengalaman', 'senior', 'pimpinan', 'tokoh puncak'];
+export const rankName = (j: Job, lvl: number) => j.ranks ? j.ranks[lvl] : `${j.name} ${JOB_LEVEL_NAMES[lvl]}`;
 
-// ---------- Aksi bulanan ----------
-export interface PlanAction { id: string; name: string; desc: string; fx: Fx; need?: 'job' | 'party' | 'money' }
+// ---------- Kegiatan mingguan ----------
+// Waktu dibagi dalam jam per minggu. Efek (fx) ditulis per 10 jam/minggu; makin banyak jam, makin kecil tambahan per jamnya.
+export type PlanNeed = 'job' | 'party' | 'money' | 'research' | 'comp' | 'partner' | 'family' | 'org' | 'student' | 'tutor' | 'skill' | 'motor' | 'rantau';
+export interface PlanAction {
+  id: string; name: string; desc: string; fx: Fx; need?: PlanNeed;
+  group: 'Belajar & karier' | 'Cari uang tambahan' | 'Sosial & keluarga' | 'Diri sendiri';
+  /** jam maksimal per minggu */
+  max: number;
+  /** perkiraan bayaran per jam (juta), untuk tampilan */
+  rate?: number;
+}
 export const PLAN_ACTIONS: PlanAction[] = [
-  { id: 'kerja_keras', name: 'Kerja keras', desc: 'Lembur dan ambil pekerjaan tambahan di kantor.', fx: { attr: { stres: 1.2 } }, need: 'job' },
-  { id: 'belajar', name: 'Belajar', desc: 'Baca, kursus, diskusi.', fx: { attr: { kecerdasan: 0.35, stres: 0.2 } } },
-  { id: 'sosialisasi', name: 'Bergaul', desc: 'Datang ke acara, kenalan dengan orang baru.', fx: { attr: { jaringan: 0.35, karisma: 0.1 }, money: -0.5 } },
-  { id: 'blusukan', name: 'Kegiatan warga', desc: 'Gotong royong, hadir di hajatan, ikut rapat RT.', fx: { pop: { desa: 0.5, kabupaten: 0.15 }, attr: { karisma: 0.1 } } },
-  { id: 'istirahat', name: 'Istirahat', desc: 'Tidur cukup, libur, tidak memikirkan apa-apa.', fx: { attr: { stres: -2.5, kesehatan: 0.3 } } },
-  { id: 'usaha', name: 'Usaha sampingan', desc: 'Jualan kecil-kecilan di luar pekerjaan utama.', fx: { attr: { stres: 0.5, jaringan: 0.05 } } },
-  { id: 'partai', name: 'Kegiatan partai', desc: 'Rapat, kaderisasi, bantu acara partai.', fx: { party: 0.8, attr: { jaringan: 0.15, stres: 0.3 } }, need: 'party' },
-  { id: 'citra', name: 'Olah citra media', desc: 'Bayar 2 juta/bulan untuk tampil di media.', fx: { money: -2, pop: { provinsi: 0.25, nasional: 0.2 } }, need: 'money' },
+  { id: 'belajar', group: 'Belajar & karier', max: 40, name: 'Belajar mandiri', desc: 'Mengulang materi, membaca, mengerjakan tugas lebih awal. Menaikkan IPK dan kecerdasan.', fx: { attr: { kecerdasan: 0.35, stres: 0.2 } } },
+  { id: 'kursus', group: 'Belajar & karier', max: 15, name: 'Kursus bahasa Inggris', desc: 'Kelas malam dan latihan percakapan. Sekitar 0,5 juta/bulan per 10 jam.', fx: { money: -0.5, attr: { stres: 0.2 } } },
+  { id: 'riset', group: 'Belajar & karier', max: 35, name: 'Kerjakan riset', desc: 'Di laboratorium atau perpustakaan sampai larut.', fx: { attr: { kecerdasan: 0.15, stres: 0.4 } }, need: 'research' },
+  { id: 'latihan', group: 'Belajar & karier', max: 25, name: 'Latihan untuk lomba', desc: 'Persiapan intensif menjelang hari lomba.', fx: { attr: { stres: 0.3 } }, need: 'comp' },
+  { id: 'magang', group: 'Belajar & karier', max: 25, rate: 0.012, name: 'Magang', desc: 'Magang paruh waktu di kantor. Bayarannya kecil, tapi pengalaman kerja dilirik perekrut.', fx: { attr: { jaringan: 0.2, kecerdasan: 0.08, stres: 0.4 } }, need: 'student' },
+  { id: 'organisasi', group: 'Belajar & karier', max: 25, name: 'Aktif berorganisasi', desc: 'Rapat, program kerja, dan acara organisasi.', fx: { attr: { jaringan: 0.12, karisma: 0.06, stres: 0.2 } }, need: 'org' },
+  { id: 'partai', group: 'Belajar & karier', max: 25, name: 'Kegiatan partai', desc: 'Rapat, kaderisasi, bantu acara partai.', fx: { party: 0.8, attr: { jaringan: 0.15, stres: 0.3 } }, need: 'party' },
+  { id: 'kerja_keras', group: 'Cari uang tambahan', max: 25, name: 'Lembur', desc: 'Jam ekstra di pekerjaan utama: gaji lebih besar dan naik jenjang lebih cepat.', fx: { attr: { stres: 1.2 } }, need: 'job' },
+  { id: 'ojol', group: 'Cari uang tambahan', max: 40, rate: 0.022, name: 'Ojek daring sampingan', desc: 'Narik sepulang kuliah atau kerja. Pasti dapat uang, tapi capek dan rawan di jalan.', fx: { attr: { kesehatan: -0.08, stres: 0.5, jaringan: 0.03 } }, need: 'motor' },
+  { id: 'les', group: 'Cari uang tambahan', max: 20, rate: 0.07, name: 'Mengajar les privat', desc: 'Les matematika atau bahasa untuk anak sekolah. Bayaran per jam lumayan.', fx: { attr: { karisma: 0.05, kecerdasan: 0.05, stres: 0.3 } }, need: 'tutor' },
+  { id: 'freelance', group: 'Cari uang tambahan', max: 30, rate: 0.08, name: 'Kerja lepas', desc: 'Proyek desain, ngoding, menulis, atau menerjemahkan dari rumah. Klien kadang ada, kadang hilang.', fx: { attr: { kecerdasan: 0.06, stres: 0.4 } }, need: 'skill' },
+  { id: 'usaha', group: 'Cari uang tambahan', max: 40, name: 'Jualan daring', desc: 'Jualan kecil-kecilan lewat media sosial dan lokapasar. Untung-rugi tak menentu.', fx: { attr: { stres: 0.5, jaringan: 0.05 } } },
+  { id: 'sosialisasi', group: 'Sosial & keluarga', max: 30, name: 'Bergaul & nongkrong', desc: 'Datang ke acara, ngopi, kenalan dengan orang baru.', fx: { attr: { jaringan: 0.35, karisma: 0.1 }, money: -0.5 } },
+  { id: 'blusukan', group: 'Sosial & keluarga', max: 30, name: 'Kegiatan warga', desc: 'Gotong royong, hadir di hajatan, ikut rapat RT.', fx: { pop: { desa: 0.5, kabupaten: 0.15 }, attr: { karisma: 0.1 } } },
+  { id: 'pasangan', group: 'Sosial & keluarga', max: 30, name: 'Waktu untuk pasangan', desc: 'Makan malam, jalan-jalan, atau sekadar telepon berjam-jam.', fx: { attr: { stres: -1 }, money: -0.8 }, need: 'partner' },
+  { id: 'keluarga', group: 'Sosial & keluarga', max: 40, name: 'Waktu bersama keluarga', desc: 'Antar anak sekolah, makan bersama, libur akhir pekan.', fx: { attr: { stres: -1.4, kesehatan: 0.1 } }, need: 'family' },
+  { id: 'pulang', group: 'Sosial & keluarga', max: 12, name: 'Pulang kampung & jenguk orang tua', desc: 'Menengok orang tua dan tetangga di kampung. Ongkosnya tidak gratis.', fx: { attr: { stres: -0.8, integritas: 0.05 }, pop: { desa: 0.3 }, money: -0.6 }, need: 'rantau' },
+  { id: 'citra', group: 'Sosial & keluarga', max: 20, name: 'Olah citra media', desc: 'Bayar tim media untuk menampilkan namamu. Sekitar 2 juta/bulan per 10 jam.', fx: { money: -2, pop: { provinsi: 0.25, nasional: 0.2 } }, need: 'money' },
+  { id: 'istirahat', group: 'Diri sendiri', max: 40, name: 'Santai & hiburan', desc: 'Nonton, main gim, jalan-jalan, tidak memikirkan apa-apa.', fx: { attr: { stres: -2.5, kesehatan: 0.3 } } },
 ];
+export const PLAN_GROUPS: PlanAction['group'][] = ['Belajar & karier', 'Cari uang tambahan', 'Sosial & keluarga', 'Diri sendiri'];
 
 // ---------- Kebiasaan ----------
 export const HABITS: Habit[] = [
@@ -217,7 +273,11 @@ export const CAMPUS_CRIT: Record<string, Criteria> = {
   negeri_favorit: { w: { kecerdasan: 1 }, bar: 62, net: 0.03, note: 'Ujian tulis nasional yang ketat. Hampir murni soal kecerdasan.' },
   negeri_daerah: { w: { kecerdasan: 1 }, bar: 46, net: 0.05, note: 'Ujian masuk tingkat daerah. Saingan lebih sedikit.' },
   swasta: { w: { kecerdasan: 1 }, bar: 20, note: 'Hampir semua pendaftar diterima asal sanggup membayar.' },
-  luar_negeri: { w: { kecerdasan: 3, karisma: 1 }, bar: 66, note: 'Esai, wawancara, dan nilai. Beasiswa hanya untuk yang sangat cerdas.' },
+  luar_negeri: { w: { kecerdasan: 3, karisma: 1 }, bar: 68, note: 'Esai, rekomendasi, dan wawancara. Salah satu seleksi tersulit di dunia.' },
+  australis_u: { w: { kecerdasan: 3, karisma: 1 }, bar: 58, note: 'Nilai akademik dan tes bahasa; esai singkat.' },
+  temasik_u: { w: { kecerdasan: 4, karisma: 1 }, bar: 64, note: 'Nilai dan ujian masuk; persaingan se-Asia.' },
+  tiongkara_u: { w: { kecerdasan: 3 }, bar: 54, note: 'Nilai akademik; kursi kelas internasional cukup banyak.' },
+  iup: { w: { kecerdasan: 3, karisma: 1 }, bar: 58, net: 0.03, note: 'Ujian masuk, tes bahasa Inggris, dan wawancara.' },
   akmil: { w: { kesehatan: 3, kecerdasan: 1, integritas: 1 }, bar: 62, net: 0.1, note: 'Tes fisik berat, psikotes, dan penelusuran latar belakang. Kenalan perwira membantu.' },
   kedinasan: { w: { kecerdasan: 3, integritas: 1 }, bar: 58, net: 0.08, note: 'Tes kompetensi dasar dengan kuota sempit.' },
 };
@@ -237,6 +297,25 @@ export const JOB_CRIT: Record<string, Criteria> = {
   pengusaha: { w: {}, bar: 0, auto: true, note: 'Usaha sendiri. Yang menyeleksi adalah pasar.' },
   influencer: { w: { karisma: 1 }, bar: 58, note: 'Tidak ada yang melamar jadi terkenal; kontenmu harus memikat penonton.' },
   staf_partai: { w: { jaringan: 2, karisma: 1 }, bar: 32, note: 'Pengurus partai memilih kader yang dikenal dan bisa disuruh.' },
+  ojol: { w: {}, bar: 0, auto: true, note: 'Cukup punya motor dan SIM. Daftar lewat aplikasi.' },
+  koki: { w: { kesehatan: 1, kecerdasan: 1 }, bar: 35, note: 'Uji masak di dapur. Tahan panas, tahan dimarahi.' },
+  atlet: { w: { kesehatan: 4, karisma: 1 }, bar: 70, note: 'Seleksi klub dan pelatnas. Hanya yang bertubuh prima dan masih muda.' },
+  programmer: { w: { kecerdasan: 3, jaringan: 1 }, bar: 56, note: 'Tes ngoding dan wawancara teknis. Ijazah tidak wajib, kemampuan wajib.' },
+  data: { w: { kecerdasan: 3 }, bar: 57, note: 'Studi kasus data dan wawancara.' },
+  akuntan: { w: { kecerdasan: 2, integritas: 1 }, bar: 52, note: 'Tes akuntansi dan pajak.' },
+  bankir: { w: { kecerdasan: 2, karisma: 1, jaringan: 1 }, bar: 54, net: 0.05, note: 'Program pengembangan staf: psikotes dan wawancara berlapis.' },
+  konsultan: { w: { kecerdasan: 3, karisma: 2 }, bar: 66, net: 0.05, note: 'Studi kasus bertubi-tubi; lulusan kampus top didahulukan.' },
+  polisi: { w: { kesehatan: 3, integritas: 1, kecerdasan: 1 }, bar: 58, net: 0.12, note: 'Tes fisik, psikologi, dan akademik. Katanya bisa "dibantu" orang dalam.' },
+  jaksa: { w: { kecerdasan: 3, integritas: 1 }, bar: 60, net: 0.1, note: 'Seleksi calon jaksa: ujian hukum dan pendidikan pembentukan.' },
+  diplomat: { w: { kecerdasan: 3, karisma: 2 }, bar: 65, note: 'Seleksi kementerian luar negeri: bahasa asing, wawasan, wawancara.' },
+  perawat: { w: { kecerdasan: 1, integritas: 1, kesehatan: 1 }, bar: 45, note: 'Uji kompetensi perawat.' },
+  apoteker: { w: { kecerdasan: 2, integritas: 1 }, bar: 52, note: 'Uji kompetensi apoteker.' },
+  psikolog: { w: { kecerdasan: 2, karisma: 1 }, bar: 55, note: 'Izin praktik psikolog dari asosiasi profesi.' },
+  peneliti: { w: { kecerdasan: 4 }, bar: 62, note: 'Badan riset menilai publikasi dan proposal riset.' },
+  desainer: { w: { karisma: 2, kecerdasan: 1 }, bar: 46, note: 'Portofolio adalah segalanya.' },
+  musisi: { w: { karisma: 3 }, bar: 52, note: 'Tidak ada lowongan musisi; kamu harus dilirik label atau penonton.' },
+  penulis: { w: { kecerdasan: 2, karisma: 1 }, bar: 0, auto: true, note: 'Siapa pun boleh menulis. Yang menyeleksi adalah pembaca.' },
+  startup: { w: {}, bar: 0, auto: true, note: 'Dirikan sendiri. Investor dan pasar yang akan menghakimi.' },
 };
 export const PARTY_CRIT: Record<string, Criteria> = {
   pbn: { w: { karisma: 2, jaringan: 1 }, bar: 40, note: 'Mencari kader yang pandai menggalang massa. Trah politik didahulukan.' },

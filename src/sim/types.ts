@@ -17,7 +17,7 @@ export type MinistryId = 'keuangan' | 'pendidikan' | 'kesehatan' | 'pu' | 'perta
 export type EndingId =
   | 'legenda' | 'dua_periode' | 'satu_periode' | 'dimakzulkan' | 'dikudeta' | 'kalah_perang'
   | 'diktator' | 'mundur_terhormat' | 'penjara' | 'bangkrut' | 'meninggal' | 'wafat_menjabat'
-  | 'tokoh_daerah' | 'warga_biasa' | 'revolusi';
+  | 'tokoh_daerah' | 'warga_biasa' | 'revolusi' | 'pensiun';
 
 /** Efek deklaratif: dipakai konten (event, aksi, kebiasaan) dan dibaca UI untuk menampilkan dampak. */
 export interface Fx {
@@ -47,6 +47,10 @@ export interface Fx {
   diplo?: number;
   jail?: number;
   end?: EndingId;
+  /** rasa sayang pasangan */
+  love?: number;
+  /** pasangan pergi (putus/cerai) */
+  endPartner?: boolean;
   /** petunjuk samar risiko jangka panjang, ditampilkan di UI */
   hint?: string;
 }
@@ -74,6 +78,19 @@ export interface Cond {
   /** butuh NPC teman dengan peran ini; NPC itu jadi subjek event ($npc) */
   friendRole?: NpcRole[];
   inParty?: boolean;
+  /** tahap hubungan asmara; 'none' = tidak punya pasangan */
+  partner?: (PartnerStage | 'none')[];
+  kids?: boolean;
+  /** anggota salah satu organisasi ini */
+  orgs?: string[];
+  research?: boolean;
+  abroad?: boolean;
+  housing?: string[];
+  city?: CityTier[];
+  /** sedang kuliah di jenjang ini */
+  eduLevel?: DegreeLevel[];
+  degreeMin?: DegreeLevel;
+  langMin?: number;
 }
 
 export interface Outcome { chance: number; text: string; fx: Fx }
@@ -127,14 +144,36 @@ export interface Job {
   income: number;
   growth: Partial<Record<AttrKey, number>>;
   pop: Partial<Record<Level, number>>;
-  need?: { attr?: Partial<Record<AttrKey, number>>; majors?: string[]; degree?: boolean };
+  need?: { attr?: Partial<Record<AttrKey, number>>; majors?: string[]; degree?: boolean; level?: DegreeLevel; maxAge?: number; capital?: number };
   heat?: number;
+  /** kelompok untuk tampilan */
+  group: string;
+  /** kota tempat pekerjaan ini ada; kosong = semua kota di dalam negeri kecuali desa */
+  where?: CityTier[];
+  /** bisa dikerjakan di luar negeri */
+  abroadOk?: boolean;
+  /** penghasilan naik-turun (0 = tetap) */
+  volatile?: number;
+  /** nama jenjang khusus (5 tingkat) */
+  ranks?: string[];
+  /** syarat naik ke jenjang tertentu */
+  gate?: { level: number; degree?: DegreeLevel; pubs?: number; note: string }[];
 }
 
 export interface Habit { id: string; name: string; desc: string; fx: Fx; cost?: number; good: boolean }
 
-export interface Major { id: string; name: string; desc: string; growth: Partial<Record<AttrKey, number>> }
-export interface Campus { id: string; name: string; desc: string; costPerMonth: number; quality: number; network: number; need?: Partial<Record<AttrKey, number>>; months: number }
+export interface Major { id: string; name: string; desc: string; growth: Partial<Record<AttrKey, number>>; research: boolean; topics: string[] }
+export interface Campus {
+  id: string; name: string; desc: string; costPerMonth: number; quality: number; network: number; need?: Partial<Record<AttrKey, number>>; months: number;
+  city: CityTier;
+  /** skor tes bahasa Inggris minimum (skala 0-9) */
+  lang?: number;
+  abroad?: boolean;
+  /** jenjang yang dibuka */
+  levels: DegreeLevel[];
+  /** program kelas internasional: setahun di kampus mitra luar negeri */
+  iup?: boolean;
+}
 
 export interface Party { id: string; name: string; short: string; ideology: string; color: string; seats: number; likes: string[]; hates: string[] }
 
@@ -214,12 +253,72 @@ export interface Presidency {
   pool: Npc[]; // calon menteri non-teman
 }
 
+export type DegreeLevel = 'S1' | 'S2' | 'S3';
+export type CityTier = 'desa' | 'kabupaten' | 'provinsi' | 'pelajar' | 'ibukota' | 'atlantika' | 'australis' | 'temasik' | 'tiongkara';
+export type HousingId = 'ortu' | 'kos' | 'kontrakan' | 'apartemen' | 'rumah' | 'asrama';
+export type PartnerStage = 'pdkt' | 'pacaran' | 'tunangan' | 'menikah';
+
 export interface Education {
   campus: string;
   major: string;
   monthsLeft: number;
-  level: 'S1' | 'S2';
+  /** total lama studi (untuk progres) */
+  total: number;
+  level: DegreeLevel;
+  /** IPK berjalan 0-4 */
+  gpa: number;
+  /** beasiswa yang membiayai (id) */
+  funding: string | null;
+  /** IUP / pertukaran: kota luar negeri dan bulan berangkat-pulang (sisa monthsLeft) */
+  away?: { city: CityTier; from: number; to: number; kind: 'iup' | 'pertukaran' };
+  /** berapa kali masa studi diperpanjang */
+  ext: number;
+  /** jumlah publikasi saat mulai studi */
+  pubs0: number;
 }
+
+export interface Home {
+  city: CityTier;
+  housing: HousingId;
+  addr: string;
+  /** nama tempat: desa asal, kabupaten, provinsi */
+  /** nama tempat; kabId/provCityId merujuk kota di peta (content/geo.ts) */
+  names: { desa: string; kab: string; prov: string; provName?: string; kabId?: string; provCityId?: string; kec?: string };
+  hometown: CityTier;
+  house: { city: CityTier; value: number; addr: string } | null;
+  kpr: { left: number; monthly: number } | null;
+  /** tempat tinggal sebelum berangkat IUP/pertukaran */
+  back?: { city: CityTier; housing: HousingId; addr: string };
+}
+
+export interface OrgMember { id: string; role: 0 | 1 | 2; months: number }
+
+export interface Research { topic: string; major: string; scope: 'kecil' | 'besar'; progress: number; need: number; quality: number; fabricated?: boolean }
+export interface Publication { title: string; venue: 'nasional' | 'internasional'; year: number }
+
+export interface CompEntry { id: string; intl: boolean; monthsLeft: number; prep: number }
+
+export interface Partner {
+  name: string;
+  gender: 'L' | 'P';
+  age: number;
+  job: string;
+  trait: string;
+  /** juta/bulan */
+  income: number;
+  stage: PartnerStage;
+  love: number;
+  months: number;
+  /** kecocokan -10..10, tersembunyi */
+  fit: number;
+  since: number;
+  city: CityTier;
+}
+export interface Prospect { name: string; gender: 'L' | 'P'; age: number; job: string; trait: string; income: number; fit: number; via: string }
+export interface Child { name: string; gender: 'L' | 'P'; born: number }
+
+export interface BallotCand { name: string; party: string | null; style: string; incumbent: boolean; base: number }
+export interface Ballot { cands: BallotCand[] }
 
 export interface Character {
   name: string;
@@ -232,8 +331,13 @@ export interface Character {
   jobLevel: number;
   jobMonths: number;
   habits: string[];
-  plan: string[]; // 3 aksi bulanan
-  degree: null | 'S1' | 'S2';
+  /** rencana lama (slot); diganti `time` */
+  plan: string[];
+  /** jam per minggu untuk tiap kegiatan */
+  time: Record<string, number>;
+  /** jam tidur per malam */
+  sleep: number;
+  degree: null | DegreeLevel;
   major: string | null;
   campus: string | null;
   edu: Education | null;
@@ -244,6 +348,38 @@ export interface Character {
   debtMonths: number;
   everOffice: OfficeId[];
   cooldown: number; // bulan sampai boleh nyalon lagi
+  /** cita-cita hidup */
+  aspiration: string;
+  home: Home;
+  /** kemampuan bahasa Inggris 0-100 */
+  lang: number;
+  /** skor tes bahasa terakhir (skala 0-9) */
+  langTest: { score: number; turn: number } | null;
+  /** IPK kelulusan terakhir */
+  gpa: number | null;
+  /** beasiswa yang sudah didapat tapi belum dipakai */
+  scholarship: { id: string; level: DegreeLevel; turn: number } | null;
+  orgs: OrgMember[];
+  research: Research | null;
+  pubs: Publication[];
+  comp: CompEntry | null;
+  awards: string[];
+  partner: Partner | null;
+  prospect: Prospect | null;
+  exes: string[];
+  children: Child[];
+  wantKids: boolean;
+  parents: number;
+  parentAge: number;
+  votes: number;
+  /** bulan sampai boleh mencari jodoh lagi */
+  loveLeft: number;
+  /** uang pensiun juta/bulan */
+  pension: number;
+  /** keuangan orang tua: tabungan keluarga, uang saku bulanan, dan kemampuan bayar kuliah per bulan (juta) */
+  family: { fund: number; allowance: number; tuitionCap: number; asked: number };
+  /** rincian arus uang bulan terakhir (juta; + masuk, - keluar) */
+  ledger: Record<string, number>;
 }
 
 export interface HistoryEntry { turn: number; age: number; text: string; kind: 'pilihan' | 'akibat' | 'tonggak' }
@@ -276,6 +412,8 @@ export interface GameState {
   pres: Presidency | null;
   nation: Record<NationKey, number>;
   nationHist: Record<NationKey, number>[];
+  /** statistik kota/kabupaten; provinsi & nasional adalah agregatnya (lihat sim/regions.ts) */
+  regions?: import('./regions').RegionState;
   aiBudget: Budget;
   /** presiden AI yang sedang menjabat (null bila pemain presiden) */
   gov: Gov | null;
@@ -292,14 +430,16 @@ export interface GameState {
   log: string[];
   socialLeft: number;
   ending: Ending | null;
+  ballot: Ballot | null;
 }
 
 export type Action =
   | { type: 'setPlan'; plan: string[] }
+  | { type: 'setTime'; time: Record<string, number>; sleep: number }
   | { type: 'setHabits'; habits: string[] }
   | { type: 'takeJob'; job: string }
   | { type: 'quitJob' }
-  | { type: 'enroll'; campus: string; major: string }
+  | { type: 'enroll'; campus: string; major: string; scholarship?: string }
   | { type: 'dropOut' }
   | { type: 'joinParty'; party: string }
   | { type: 'leaveParty' }
@@ -317,4 +457,21 @@ export type Action =
   | { type: 'diplo'; country: string; act: 'kunjungan' | 'dagang' | 'aliansi' | 'bantuan' | 'sanksi' | 'cabut_sanksi' | 'perang' }
   | { type: 'war'; act: 'serang' | 'bertahan' | 'damai' }
   | { type: 'resign' }
+  | { type: 'move'; city: CityTier; housing: HousingId }
+  | { type: 'buyHouse'; kpr: boolean }
+  | { type: 'sellHouse' }
+  | { type: 'langTest' }
+  | { type: 'askParents' }
+  | { type: 'applyScholarship'; id: string }
+  | { type: 'exchange' }
+  | { type: 'startResearch'; topic: string; scope: 'kecil' | 'besar' }
+  | { type: 'dropResearch' }
+  | { type: 'joinOrg'; id: string }
+  | { type: 'leaveOrg'; id: string }
+  | { type: 'runOrg'; id: string }
+  | { type: 'enterComp'; id: string; intl: boolean }
+  | { type: 'findLove'; via: string }
+  | { type: 'love'; act: 'dekati' | 'abaikan' | 'kencan' | 'tembak' | 'lamar' | 'putus' | 'nikah'; size?: 'sederhana' | 'sedang' | 'mewah' }
+  | { type: 'wantKids'; on: boolean }
+  | { type: 'vote'; index: number; party: string | null; endorse: boolean }
   | { type: 'next' };

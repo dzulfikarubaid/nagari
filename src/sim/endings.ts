@@ -3,6 +3,8 @@ import { setFinishHook, addHistory, hasFlag, age, clamp } from './core';
 import { legacyScore } from './presidency';
 import { officeDef, POLICIES } from '../content/data';
 import { closeRecord } from './gov';
+import { aspirationMet, achievements, lifeScore } from './personal';
+import { ASPIRATIONS } from '../content/life';
 
 const TEXT: Record<EndingId, [string, string]> = {
   legenda: ['Bapak Bangsa', 'Dua periode berlalu dan Nagari jauh lebih baik daripada saat kamu dilantik. Namamu diabadikan di jalan, bandara, dan buku pelajaran.'],
@@ -19,6 +21,7 @@ const TEXT: Record<EndingId, [string, string]> = {
   wafat_menjabat: ['Wafat Saat Menjabat', 'Bendera setengah tiang di seluruh Nagari. Kamu meninggal sebagai presiden; pekerjaanmu diteruskan orang lain.'],
   tokoh_daerah: ['Tokoh Daerah', 'Kamu tidak pernah sampai ke istana, tetapi di daerahmu namamu dikenang. Tidak semua jalan harus berakhir di ibu kota.'],
   warga_biasa: ['Warga Biasa', 'Usia tujuh puluh, dan mimpi jadi presiden tinggal cerita untuk cucu. Hidupmu tenang; sejarah tidak mencatat namamu.'],
+  pensiun: ['Hidup yang Dijalani', 'Usia tujuh puluh. Kamu duduk di beranda dan menghitung apa saja yang sudah kamu lalui.'],
   revolusi: ['Digulingkan Rakyat', 'Jutaan orang memenuhi jalan. Pagar istana roboh. Kamu pergi lewat pintu belakang dengan helikopter.'],
 };
 
@@ -91,12 +94,22 @@ function score(s: GameState, id: EndingId): number {
   const tier: Record<OfficeId, number> = { kades: 8, bupati: 16, gubernur: 26, presiden: 40 };
   const best = Math.max(0, ...s.char.everOffice.map(o => tier[o]));
   const c = s.char;
-  return Math.round(clamp(best + c.pop.nasional * 0.1 + c.pop.provinsi * 0.05 + (c.attr.integritas - 50) * 0.1 - (id === 'penjara' ? 10 : 0)));
+  const political = Math.round(clamp(best + c.pop.nasional * 0.1 + c.pop.provinsi * 0.05 + (c.attr.integritas - 50) * 0.1 - (id === 'penjara' ? 10 : 0)));
+  return Math.max(political, c.aspiration === 'presiden' ? Math.round(lifeScore(s) * 0.6) : lifeScore(s));
 }
 
 setFinishHook((s, id) => {
-  const [title, text] = TEXT[id];
-  s.ending = { id, title, text, score: score(s, id), causes: causes(s, id) };
+  let [title, text] = TEXT[id];
+  const asp = ASPIRATIONS.find(a => a.id === s.char.aspiration);
+  if (id === 'pensiun' && asp) {
+    const met = aspirationMet(s);
+    title = asp.id === 'bebas' ? 'Hidup yang Dijalani' : met ? `Cita-cita Tercapai: ${asp.name}` : `Belum Sampai: ${asp.name}`;
+    text = asp.id === 'bebas' ? `${text} Tanpa peta, kamu tetap sampai di suatu tempat.`
+      : met ? `${text} Mimpi yang kamu tulis di usia delapan belas (${asp.name.toLowerCase()}) benar-benar terwujud.`
+      : `${text} Mimpi ${asp.name.toLowerCase()} belum sepenuhnya terwujud, tapi hidupmu tidak kosong.`;
+  }
+  const cs = [...causes(s, id), ...(s.pres ? [] : achievements(s))].slice(0, 12);
+  s.ending = { id, title, text, score: score(s, id), causes: cs };
   if (s.pres) closeRecord(s, title);
   s.campaign = null;
   s.pending = [];

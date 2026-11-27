@@ -38,6 +38,7 @@ export const findNpc = (s: GameState, id?: string): Npc | undefined =>
 const NATION_BOUNDS: Partial<Record<NationKey, [number, number]>> = {
   pdb: [100, 1e7], pertumbuhan: [-12, 12], inflasi: [-2, 60], pengangguran: [1, 40], kemiskinan: [1, 60], utang: [0, 250],
 };
+export const boundsOf = (k: NationKey): [number, number] => NATION_BOUNDS[k] ?? [0, 100];
 export function clampNation(s: GameState) {
   for (const k of Object.keys(s.nation) as NationKey[]) {
     const b = NATION_BOUNDS[k] ?? [0, 100];
@@ -116,6 +117,13 @@ export function applyFx(s: GameState, fx: Fx | undefined, npcId?: string, soft =
     if (fx.diplo) for (const cs of s.pres.countries) cs.rel = clamp(cs.rel + fx.diplo, -100, 100);
   }
   if (fx.jail) sendToJail(s, fx.jail);
+  if (fx.love && c.partner) c.partner.love = clamp(c.partner.love + fx.love);
+  if (fx.endPartner && c.partner) {
+    const p = c.partner;
+    if (p.stage === 'menikah') setFlag(s, 'pernah_cerai');
+    c.exes.push(p.name); c.partner = null; c.loveLeft = 4;
+    addHistory(s, p.stage === 'menikah' ? `Bercerai dengan ${p.name}.` : `Berpisah dengan ${p.name}.`, 'akibat');
+  }
   if (fx.end) finish(s, fx.end);
 }
 
@@ -146,6 +154,16 @@ export function check(s: GameState, c: Cond | undefined, npcId?: string): boolea
   if (c.atWar !== undefined && (!!s.pres?.war) !== c.atWar) return false;
   if (c.student !== undefined && (ch.edu !== null) !== c.student) return false;
   if (c.inParty !== undefined && (ch.party !== null) !== c.inParty) return false;
+  if (c.partner && !c.partner.includes(ch.partner ? ch.partner.stage : 'none')) return false;
+  if (c.kids !== undefined && (ch.children.length > 0) !== c.kids) return false;
+  if (c.orgs && !ch.orgs.some(o => c.orgs!.includes(o.id))) return false;
+  if (c.research !== undefined && (ch.research !== null) !== c.research) return false;
+  if (c.abroad !== undefined && ['atlantika', 'australis', 'temasik', 'tiongkara'].includes(ch.home.city) !== c.abroad) return false;
+  if (c.housing && !c.housing.includes(ch.home.housing)) return false;
+  if (c.city && !c.city.includes(ch.home.city)) return false;
+  if (c.eduLevel && !(ch.edu && c.eduLevel.includes(ch.edu.level))) return false;
+  if (c.degreeMin && (ch.degree ? { S1: 1, S2: 2, S3: 3 }[ch.degree] : 0) < { S1: 1, S2: 2, S3: 3 }[c.degreeMin]) return false;
+  if (c.langMin !== undefined && ch.lang < c.langMin) return false;
   if (c.friendRole) {
     if (npcId) { const n = findNpc(s, npcId); return n ? npcId : false; }
     const pool = s.npcs.filter(n => n.met && n.rel >= 30 && c.friendRole!.includes(n.role));

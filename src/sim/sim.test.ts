@@ -99,6 +99,7 @@ describe('konsekuensi', () => {
     while (!s.ending && guard++ < 400 && !s.flags['ingkar_janji']) {
       if (s.result) s = dispatch(s, { type: 'dismissResult' });
       else if (s.lastElection) s = dispatch(s, { type: 'dismissElection' });
+      else if (s.ballot) s = dispatch(s, { type: 'vote', index: -1, party: null, endorse: false });
       else if (s.pending.length) { const ev = EVENT_MAP[s.pending[0].id]; const i = ev.choices.findIndex(c => !c.need && !c.fx?.end && !c.fx?.jail && !c.outcomes); s = dispatch(s, { type: 'choose', index: i < 0 ? 0 : i }); }
       else s = dispatch(s, { type: 'next' });
     }
@@ -116,6 +117,7 @@ describe('pemerintahan AI', () => {
     const first = s.gov!.name;
     for (let i = 0; i < 260 && !s.ending; i++) {
       if (s.result) s = dispatch(s, { type: 'dismissResult' });
+      else if (s.ballot) s = dispatch(s, { type: 'vote', index: 1, party: null, endorse: false });
       else if (s.pending.length) { const ev = EVENT_MAP[s.pending[0].id]; const k = ev.choices.findIndex(c => !c.need && !c.fx?.end && !c.fx?.jail && !c.outcomes); s = dispatch(s, { type: 'choose', index: k < 0 ? 0 : k }); }
       else s = dispatch(s, { type: 'next' });
     }

@@ -7,6 +7,9 @@ import * as THREE from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { GameState } from '../sim/types';
 import { COUNTRIES } from '../content/data';
+import { PROVINCES, inside, coastDist, area, districts, cityLabel, type Pt } from '../content/geo';
+import { useStore } from '../store';
+import { welfare, provState, cityState } from '../sim/regions';
 
 export type SceneKind = 'desa' | 'kota' | 'metropolis' | 'istana' | 'peta' | 'dunia' | 'penjara';
 type V3 = [number, number, number];
@@ -60,13 +63,17 @@ function Person({ id, p, r = 0, s = 1.9, anim = 'idle', offset = 0 }: { id: stri
 
 function Rig({ radius, height, speed = 0.05, target = [0, 1, 0] as V3 }: { radius: number; height: number; speed?: number; target?: V3 }) {
   const size = useThree(st => st.size);
+  const look = useRef<THREE.Vector3 | null>(null);
   useFrame(({ camera, clock }) => {
     // Geser pandangan ke kiri supaya tokoh tidak tertutup panel kanan.
     const cam = camera as THREE.PerspectiveCamera;
     if (size.width > 900) cam.setViewOffset(size.width, size.height, size.width * 0.14, 0, size.width, size.height); else cam.clearViewOffset();
     const t = clock.elapsedTime * speed + 0.6;
-    camera.position.lerp(new THREE.Vector3(Math.sin(t) * radius, height, Math.cos(t) * radius), 0.04);
-    camera.lookAt(...target);
+    const tg = new THREE.Vector3(...target);
+    if (!look.current) look.current = tg.clone();
+    look.current.lerp(tg, 0.05);
+    camera.position.lerp(new THREE.Vector3(look.current.x + Math.sin(t) * radius, height, look.current.z + Math.cos(t) * radius), 0.04);
+    camera.lookAt(look.current);
   });
   return null;
 }
@@ -221,34 +228,148 @@ function Istana({ g }: { g: GameState }) {
   );
 }
 
-const PROVINCES: { name: string; p: [number, number]; r: number; bias: number }[] = [
-  { name: 'Andalas', p: [-6.5, -1], r: 2.4, bias: -4 }, { name: 'Jayakarta', p: [-2.2, 1.6], r: 1.7, bias: 10 },
-  { name: 'Borneo Raya', p: [-0.5, -2.4], r: 2.6, bias: -2 }, { name: 'Celebes', p: [3.2, -1.2], r: 1.8, bias: -5 },
-  { name: 'Nusa Timur', p: [2.6, 2.4], r: 1.3, bias: -10 }, { name: 'Papua Barat', p: [7, 0.2], r: 2.3, bias: -14 },
-];
 const heat = (v: number) => new THREE.Color().setHSL(Math.max(0, Math.min(0.36, ((v - 25) / 50) * 0.36)), 0.6, 0.45).getStyle();
+/** Warna daratan: makin sejahtera makin hijau subur, makin miskin makin kering. */
+const landColor = (v: number) => new THREE.Color().setHSL(0.1 + Math.max(0, Math.min(1, (v - 20) / 50)) * 0.2, 0.48, 0.33).getStyle();
+
+const LAND_Y = 0.05, LAND_D = 0.16, LAND_TOP = LAND_Y + LAND_D + 0.02;
+
+function extrude(poly: Pt[], depth: number, bevel: number, thick = bevel * 0.6) {
+  const shape = new THREE.Shape(poly.map(([x, z]) => new THREE.Vector2(x, -z)));
+  return new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: bevel > 0, bevelThickness: thick, bevelSize: bevel, bevelSegments: 1, curveSegments: 1, steps: 1 });
+}
+
+interface Terrain {
+  geo: { shallow: THREE.BufferGeometry; beach: THREE.BufferGeometry; land: THREE.BufferGeometry }[][];
+  mountains: { p: Pt; r: number; h: number; c: string }[];
+  forest: THREE.Matrix4[];
+}
+let TERRAIN: Terrain | null = null;
+/** Bentuk pulau, gunung, dan hutan tidak bergantung pada permainan: dibuat sekali saja. */
+function terrain(): Terrain {
+  if (TERRAIN) return TERRAIN;
+  const mountains: Terrain['mountains'] = [];
+  const forest: THREE.Matrix4[] = [];
+  const dummy = new THREE.Object3D();
+  PROVINCES.forEach((pv, pi) => {
+    const r = prng(777 + pi * 31);
+    const cities = pv.cities.map(c => c.p);
+    const far = (p: Pt, pts: Pt[], d: number) => pts.every(q => Math.hypot(q[0] - p[0], q[1] - p[1]) > d);
+    for (const isl of pv.islands) {
+      const xs = isl.map(p => p[0]), zs = isl.map(p => p[1]);
+      const [x0, x1, z0, z1] = [Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs)];
+      const a = area(isl);
+      const rnd = (): Pt => [x0 + r() * (x1 - x0), z0 + r() * (z1 - z0)];
+      const mine: Pt[] = [];
+      const wantM = Math.min(16, Math.round(a * 1.1));
+      for (let k = 0; k < 400 && mine.length < wantM; k++) {
+        const p = rnd();
+        if (!inside(p, isl) || coastDist(p, isl) < 0.28 || !far(p, cities, 0.5) || !far(p, mine, 0.38)) continue;
+        mine.push(p);
+        const h = 0.18 + r() * 0.32 + (pv.distrik ? 0.15 : 0);
+        mountains.push({ p, r: 0.16 + r() * 0.14, h, c: ['#6d8b5e', '#7d9468', '#6a7f62'][Math.floor(r() * 3)] });
+      }
+      const wantF = Math.round(a * 9);
+      for (let k = 0, n = 0; k < wantF * 6 && n < wantF; k++) {
+        const p = rnd();
+        if (!inside(p, isl) || coastDist(p, isl) < 0.1 || !far(p, cities, 0.32) || !far(p, mine, 0.3)) continue;
+        n++;
+        const s = 0.6 + r() * 0.7;
+        dummy.position.set(p[0], LAND_TOP + 0.07 * s, p[1]);
+        dummy.scale.set(s, s, s);
+        dummy.rotation.set(0, r() * 6, 0);
+        dummy.updateMatrix();
+        forest.push(dummy.matrix.clone());
+      }
+    }
+  });
+  const geo = PROVINCES.map(pv => pv.islands.map(isl => ({
+    shallow: extrude(isl, 0.004, 0.3, 0.002),
+    beach: extrude(isl, 0.07, 0.07, 0.03),
+    land: extrude(isl, LAND_D, 0.02, 0.02),
+  })));
+  TERRAIN = { geo, mountains, forest };
+  return TERRAIN;
+}
+
+function Forest({ mats }: { mats: THREE.Matrix4[] }) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  useEffect(() => {
+    const m = ref.current;
+    if (!m) return;
+    mats.forEach((x, i) => m.setMatrixAt(i, x));
+    m.instanceMatrix.needsUpdate = true;
+  }, [mats]);
+  return <instancedMesh ref={ref} args={[undefined, undefined, mats.length]} castShadow><coneGeometry args={[0.06, 0.15, 5]} /><meshStandardMaterial color="#2f6b3a" flatShading /></instancedMesh>;
+}
+
+const pointer = (on: boolean) => () => { document.body.style.cursor = on ? 'pointer' : ''; };
+
+function CityMark({ c, v, showLabel, selected, onPick }: { c: (typeof PROVINCES)[number]['cities'][number]; v: number; showLabel: boolean; selected: boolean; onPick: () => void }) {
+  const items = useMemo(() => {
+    const r = prng(c.name.length * 131 + c.pop);
+    const offs: [number, number][] = c.capital ? [[0, 0], [0.13, 0.07], [-0.12, 0.08], [0.02, -0.13]] : c.kind === 'kota' ? [[0, 0], [0.12, 0.06], [-0.1, 0.07]] : [[0, 0], [0.11, 0.05]];
+    return offs.map(([x, z], i) => {
+      const pool = c.capital && i < 2 ? TOWERS : c.kind === 'kota' ? SHOPS : HOUSES;
+      return { p: [c.p[0] + x, LAND_TOP, c.p[1] + z] as V3, url: pool[Math.floor(r() * pool.length)], r: Math.floor(r() * 4) * Math.PI / 2 };
+    });
+  }, [c]);
+  return (
+    <group>
+      <mesh position={[c.p[0], LAND_TOP + 0.005, c.p[1]]} receiveShadow><cylinderGeometry args={[c.capital ? 0.26 : 0.2, c.capital ? 0.26 : 0.2, 0.012, 18]} /><meshStandardMaterial color={selected ? '#f2cf74' : '#cfc8b8'} /></mesh>
+      {c.capital && <mesh position={[c.p[0], LAND_TOP + 0.012, c.p[1]]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[0.27, 0.31, 24]} /><meshStandardMaterial color="#e8b84a" side={THREE.DoubleSide} /></mesh>}
+      {items.map((it, i) => <Model key={i} url={it.url} p={it.p} r={it.r} s={c.capital && i < 2 ? 0.19 : 0.21} />)}
+      <mesh position={[c.p[0], LAND_TOP + 0.15, c.p[1]]} visible={false} onClick={e => { e.stopPropagation(); onPick(); }} onPointerOver={pointer(true)} onPointerOut={pointer(false)}><sphereGeometry args={[0.3, 8, 6]} /></mesh>
+      {showLabel && <Html zIndexRange={[1, 0]} center position={[c.p[0], LAND_TOP + 0.75, c.p[1]]} className={`map-label city ${selected ? 'me' : ''}`}><b>{c.capital ? '★ ' : ''}{cityLabel(c)}</b><span>kesejahteraan {Math.round(v)} · {districts(c).length} kec.</span></Html>}
+    </group>
+  );
+}
 
 function PetaNegara({ g }: { g: GameState }) {
-  const n = g.nation;
-  const score = (n.kebahagiaan + n.pendidikan + n.kesehatan + n.infrastruktur + (100 - n.kriminalitas)) / 5;
+  const sel = useStore(s => s.mapSel);
+  const setSel = useStore(s => s.setMapSel);
+  const T = useMemo(terrain, []);
+  const selProv = PROVINCES.find(p => p.id === sel[0]);
+  const selCity = selProv?.cities.find(c => c.id === sel[1]);
+  useEffect(() => () => { document.body.style.cursor = ''; }, []);
+
+  let cam: { radius: number; height: number; target: V3 } = { radius: 19, height: 25, target: [0.4, 0, 0.6] };
+  if (selCity) cam = { radius: 4.2, height: 4.6, target: [selCity.p[0], 0, selCity.p[1]] };
+  else if (selProv) {
+    const cs = selProv.cities;
+    const cx = cs.reduce((s, c) => s + c.p[0], 0) / cs.length, cz = cs.reduce((s, c) => s + c.p[1], 0) / cs.length;
+    const spread = Math.max(...cs.map(c => Math.hypot(c.p[0] - cx, c.p[1] - cz)));
+    cam = { radius: 5 + spread * 1.9, height: 6.5 + spread * 2.2, target: [cx, 0, cz] };
+  }
+
   return (
     <>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[80, 80]} /><meshStandardMaterial color="#1f6aa0" roughness={0.3} /></mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} onClick={() => setSel([])}><planeGeometry args={[90, 90]} /><meshStandardMaterial color="#1f6aa0" roughness={0.3} /></mesh>
       {PROVINCES.map((pv, i) => {
-        const v = score + pv.bias + ((g.seed >> i) % 7) - 3;
-        const r = prng(g.seed + i * 11);
+        const v = g.regions ? welfare(provState(g, pv.id).stats) : 50;
+              const col = landColor(v);
         return (
-          <group key={pv.name} position={[pv.p[0], 0, pv.p[1]]}>
-            <mesh position={[0, 0.06, 0]} rotation={[0, i, 0]}><cylinderGeometry args={[pv.r * 1.08, pv.r * 1.12, 0.12, 9]} /><meshStandardMaterial color="#e6d49a" /></mesh>
-            <mesh position={[0, 0.15 + v / 200, 0]} rotation={[0, i, 0]} castShadow><cylinderGeometry args={[pv.r * 0.9, pv.r, 0.3 + v / 100, 9]} /><meshStandardMaterial color={heat(v)} flatShading /></mesh>
-            <mesh position={[pv.r * 0.25, 0.6 + v / 100, -pv.r * 0.2]} castShadow><coneGeometry args={[pv.r * 0.32, 0.9, 6]} /><M c="#6f8f6a" /></mesh>
-            {Array.from({ length: 4 }, (_, k) => { const a = r() * 6.28, d = r() * pv.r * 0.6; return <Model key={k} url={TREES[k % TREES.length]} p={[Math.cos(a) * d, 0.3 + v / 100, Math.sin(a) * d]} s={0.7} />; })}
-            <Model url={SHOPS[i]} p={[-pv.r * 0.3, 0.3 + v / 100, pv.r * 0.25]} s={0.55} />
-            <Html zIndexRange={[1, 0]} center position={[0, 2, 0]} className="map-label"><b>{pv.name}</b><span>kesejahteraan {Math.round(v)}</span></Html>
+          <group key={pv.id}>
+            {T.geo[i].map((gm, k) => (
+              <group key={k}>
+                <mesh geometry={gm.shallow} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.003, 0]}><meshStandardMaterial color="#4f9ccc" transparent opacity={0.55} /></mesh>
+                <mesh geometry={gm.beach} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} receiveShadow><meshStandardMaterial color="#e6d6a2" flatShading /></mesh>
+                <mesh geometry={gm.land} rotation={[-Math.PI / 2, 0, 0]} position={[0, LAND_Y, 0]} receiveShadow castShadow
+                  onClick={e => { e.stopPropagation(); if (sel[0] !== pv.id || sel.length > 1) setSel([pv.id]); }} onPointerOver={pointer(true)} onPointerOut={pointer(false)}>
+                  <meshStandardMaterial color={col} flatShading emissive={selProv === pv ? '#14100a' : '#000000'} />
+                </mesh>
+              </group>
+            ))}
+            {pv.cities.map(c => (
+              <CityMark key={c.id} c={c} v={g.regions ? welfare(cityState(g, c.id).stats) : v} showLabel={selProv === pv} selected={selCity === c} onPick={() => setSel([pv.id, c.id])} />
+            ))}
+            {!selProv && <Html zIndexRange={[1, 0]} center position={[pv.center[0], 1.4, pv.center[1]]} className="map-label"><b>{pv.name}</b><span>kesejahteraan {Math.round(v)}</span></Html>}
           </group>
         );
       })}
-      <Rig radius={14} height={19} speed={0.02} target={[0, 0, 0]} />
+      {T.mountains.map((m, i) => <mesh key={i} position={[m.p[0], LAND_TOP + m.h / 2 - 0.02, m.p[1]]} rotation={[0, i, 0]} castShadow receiveShadow><coneGeometry args={[m.r, m.h, 6]} /><meshStandardMaterial color={m.c} flatShading /></mesh>)}
+      <Forest mats={T.forest} />
+      <Rig radius={cam.radius} height={cam.height} speed={0.02} target={cam.target} />
     </>
   );
 }
@@ -305,8 +426,13 @@ export function sceneKind(g: GameState | null, tab: string): SceneKind {
   if (g.pres) return tab === 'diplomasi' ? 'dunia' : tab === 'negara' ? 'peta' : 'istana';
   if (tab === 'negara') return 'peta';
   if (g.office?.id === 'gubernur' || g.campaign?.office === 'presiden' || g.campaign?.office === 'gubernur') return 'metropolis';
-  if (g.office?.id === 'bupati' || g.campaign?.office === 'bupati' || g.char.edu || ['pns', 'pengacara', 'jurnalis', 'dokter', 'insinyur', 'dosen', 'pengusaha', 'influencer', 'staf_partai', 'buruh'].includes(g.char.job ?? '')) return 'kota';
-  return 'desa';
+  if (g.office?.id === 'bupati' || g.campaign?.office === 'bupati') return 'kota';
+  if (g.office?.id === 'kades' || g.campaign?.office === 'kades') return 'desa';
+  // Selebihnya: pemandangan mengikuti tempat tinggal.
+  const city = g.char.home?.city ?? 'desa';
+  if (city === 'desa') return 'desa';
+  if (city === 'kabupaten' || city === 'provinsi' || city === 'pelajar') return 'kota';
+  return 'metropolis';
 }
 
 const SKY: Record<SceneKind, string> = { desa: '#a8dcf0', kota: '#b4d0e4', metropolis: '#a3bdd6', istana: '#b9dcf0', peta: '#0f2f4a', dunia: '#0b2238', penjara: '#2a2c30' };

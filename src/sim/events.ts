@@ -1,10 +1,12 @@
+import { cityName } from './personal';
 import type { GameState, GameEvent, Fx } from './types';
 import { applyFx, check, rand, addHistory, findNpc } from './core';
 import { EVENTS_CORE } from '../content/events_core';
 import { EVENTS_LIFE } from '../content/events_life';
 import { EVENTS_PRES } from '../content/events_pres';
+import { EVENTS_PERSONAL } from '../content/events_personal';
 
-export const ALL_EVENTS: GameEvent[] = [...EVENTS_CORE, ...EVENTS_LIFE, ...EVENTS_PRES];
+export const ALL_EVENTS: GameEvent[] = [...EVENTS_CORE, ...EVENTS_LIFE, ...EVENTS_PRES, ...EVENTS_PERSONAL];
 export const EVENT_MAP: Record<string, GameEvent> = Object.fromEntries(ALL_EVENTS.map(e => [e.id, e]));
 
 const COOLDOWN = 30;
@@ -52,7 +54,11 @@ export function rollEvent(s: GameState) {
 
 export function eventText(s: GameState, text: string, npcId?: string): string {
   const n = findNpc(s, npcId);
-  return text.replace(/\$npc/g, n ? n.name : 'Seorang kenalan lama');
+  const c = s.char;
+  return text.replace(/\$npc/g, n ? n.name : 'Seorang kenalan lama')
+    .replace(/\$pasangan/g, c.partner ? c.partner.name : 'pasanganmu')
+    .replace(/\$anak/g, c.children[0]?.name ?? 'anakmu')
+    .replace(/\$kota/g, cityName(s));
 }
 
 /** Buang event terdepan yang tak punya satu pun pilihan yang bisa diambil, supaya permainan tidak macet. */

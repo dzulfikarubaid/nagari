@@ -1,18 +1,21 @@
 import { useEffect } from 'react';
-import { CalendarDays, GraduationCap, Users, Landmark, Megaphone, Building2, ChartColumn, Globe, Swords, Wallet, ScrollText, Brain, Sparkles, ShieldCheck, HeartPulse, Flame, Network, History, RotateCcw, ChevronRight, FastForward, TrendingUp, Coins, Briefcase, Vote, Crown, Flag, MapPin, Newspaper, Lock, TriangleAlert, type LucideIcon } from 'lucide-react';
+import { CalendarDays, GraduationCap, Users, Landmark, Megaphone, Building2, ChartColumn, Globe, Swords, Wallet, ScrollText, Brain, Sparkles, ShieldCheck, HeartPulse, Flame, Network, History, RotateCcw, ChevronRight, FastForward, TrendingUp, Coins, Briefcase, Vote, Crown, Flag, MapPin, Newspaper, Lock, TriangleAlert, Trophy, House, Heart, type LucideIcon } from 'lucide-react';
 import { useStore } from './store';
 import { Scene } from './scene/Scene';
 import { Bar, Btn, rupiah } from './ui/common';
-import { PlanPanel, CareerPanel, RelationPanel, PoliticsPanel, CampaignPanel, OfficePanel } from './ui/LifePanels';
+import { PlanPanel, RelationPanel, PoliticsPanel, CampaignPanel, OfficePanel } from './ui/LifePanels';
 import { NationPanel, BudgetPanel, CabinetPanel, ParliamentPanel, PolicyPanel, DiploPanel } from './ui/PresPanels';
-import { NewGame, EventModal, ResultModal, ElectionModal, EndingModal, HistoryModal } from './ui/Modals';
+import { StudyPanel, JobPanel, ActivityPanel, HomePanel } from './ui/LifeExtra';
+import { BallotModal, NewGame, EventModal, ResultModal, ElectionModal, EndingModal, HistoryModal } from './ui/Modals';
 import { blocked, type GameState, type AttrKey, type Level } from './sim';
 import { age, dateLabel } from './sim/core';
-import { ATTR_LABEL, LEVEL_LABEL, JOBS, PARTIES, officeDef, MAJORS } from './content/data';
+import { ATTR_LABEL, LEVEL_LABEL, JOBS, PARTIES, officeDef, MAJORS, rankName } from './content/data';
+import { HOUSING } from './content/life';
+import { cityName } from './sim/personal';
 
 const TAB_ICON: Record<string, LucideIcon> = {
   kampanye: Megaphone, negara: ChartColumn, kabinet: Users, anggaran: Wallet, kebijakan: ScrollText, dpr: Landmark, diplomasi: Globe,
-  jabatan: Building2, rencana: CalendarDays, karier: GraduationCap, relasi: Network, politik: Flag,
+  jabatan: Building2, rencana: CalendarDays, studi: GraduationCap, karier: Briefcase, kegiatan: Trophy, hidup: House, relasi: Network, politik: Flag,
 };
 const ATTR_ICON: Record<AttrKey, LucideIcon> = { kecerdasan: Brain, karisma: Sparkles, integritas: ShieldCheck, kesehatan: HeartPulse, stres: Flame, jaringan: Network };
 
@@ -21,8 +24,9 @@ function tabsFor(g: GameState): [string, string][] {
   if (g.campaign) t.push(['kampanye', 'Kampanye']);
   if (g.pres) t.push(['negara', 'Negara'], ['kabinet', 'Kabinet'], ['anggaran', 'Anggaran'], ['kebijakan', 'Kebijakan'], ['dpr', 'DPR'], ['diplomasi', g.pres.war ? 'Perang' : 'Diplomasi']);
   else if (g.office) t.push(['jabatan', 'Jabatan']);
-  t.push(['rencana', 'Rencana']);
-  if (!g.pres) t.push(['karier', 'Karier']);
+  t.push(['rencana', 'Jadwal']);
+  if (!g.pres) t.push(['studi', 'Studi'], ['karier', 'Karier'], ['kegiatan', 'Kegiatan']);
+  t.push(['hidup', 'Hidup']);
   t.push(['relasi', 'Relasi']);
   t.push(['politik', 'Politik']);
   if (!g.pres) t.push(['negara', 'Negara']);
@@ -33,8 +37,9 @@ function roleLabel(g: GameState): string {
   const c = g.char;
   if (c.jail > 0) return `Narapidana (sisa ${c.jail} bulan)`;
   if (g.office) return officeDef(g.office.id).name;
-  if (c.edu) return `Mahasiswa ${MAJORS.find(m => m.id === c.edu!.major)?.name}`;
-  return JOBS.find(j => j.id === c.job)?.name ?? 'Belum bekerja';
+  if (c.edu) return `Mahasiswa ${c.edu.level} ${MAJORS.find(m => m.id === c.edu!.major)?.name}`;
+  const j = JOBS.find(j => j.id === c.job);
+  return j ? rankName(j, c.jobLevel) : c.pension ? 'Pensiunan' : 'Belum bekerja';
 }
 
 function Sidebar({ g }: { g: GameState }) {
@@ -45,6 +50,8 @@ function Sidebar({ g }: { g: GameState }) {
       <div className="card">
         <h3 className="ic">{g.pres ? <Crown size={17} /> : null}{c.name}</h3>
         <div className="mini">{age(g)} tahun · {roleLabel(g)}{party ? ` · ${party.short}` : ''}{c.degree ? ` · ${c.degree}` : ''}</div>
+        <div className="mini ic"><House size={12} />{HOUSING.find(x => x.id === c.home.housing)?.name}, {cityName(g)}</div>
+        {c.partner && <div className="mini ic"><Heart size={12} />{({ pdkt: 'Mendekati', pacaran: 'Pacaran dengan', tunangan: 'Tunangan dengan', menikah: 'Menikah dengan' })[c.partner.stage]} {c.partner.name}{c.children.length ? ` · ${c.children.length} anak` : ''}</div>}
         <div className={`money ic ${c.money < 0 ? 'warn' : ''}`}><Wallet size={19} />{rupiah(c.money)}</div>
         {(Object.keys(c.attr) as AttrKey[]).map(k => (
           <Bar key={k} icon={ATTR_ICON[k]} label={ATTR_LABEL[k]} value={c.attr[k]} tone={k === 'stres' ? (c.attr[k] > 70 ? 'bad' : 'blue') : k === 'kesehatan' && c.attr[k] < 30 ? 'bad' : 'gold'} />
@@ -108,7 +115,10 @@ export default function App() {
             <div className="panel">
               {g.char.jail > 0 && <div className="card danger"><h4 className="ic"><Lock size={16} />Di penjara</h4><p>Sisa hukuman {g.char.jail} bulan. Tak ada yang bisa dilakukan selain menunggu.</p></div>}
               {cur === 'rencana' && <PlanPanel g={g} />}
-              {cur === 'karier' && <CareerPanel g={g} />}
+              {cur === 'studi' && <StudyPanel g={g} />}
+              {cur === 'karier' && <JobPanel g={g} />}
+              {cur === 'kegiatan' && <ActivityPanel g={g} />}
+              {cur === 'hidup' && <HomePanel g={g} />}
               {cur === 'relasi' && <RelationPanel g={g} />}
               {cur === 'politik' && <PoliticsPanel g={g} />}
               {cur === 'kampanye' && g.campaign && <CampaignPanel g={g} />}
@@ -134,7 +144,7 @@ export default function App() {
         </>
       )}
       {!g && <NewGame />}
-      {g && !g.ending && !showHistory && (g.lastElection ? <ElectionModal g={g} /> : g.result ? <ResultModal g={g} /> : g.pending.length > 0 ? <EventModal g={g} /> : null)}
+      {g && !g.ending && !showHistory && (g.lastElection ? <ElectionModal g={g} /> : g.ballot && !g.result ? <BallotModal g={g} /> : g.result ? <ResultModal g={g} /> : g.pending.length > 0 ? <EventModal g={g} /> : null)}
       {g?.ending && !showHistory && <EndingModal g={g} />}
       {g && showHistory && <HistoryModal g={g} />}
     </div>

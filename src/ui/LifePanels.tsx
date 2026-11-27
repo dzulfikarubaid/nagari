@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { CalendarDays, Repeat, GraduationCap, Briefcase, Network, Flag, Vote, Megaphone, Building2, ScrollText, TriangleAlert, HeartHandshake, HandCoins, ThumbsUp, UserX, Send } from 'lucide-react';
+import { Repeat, Network, Flag, Vote, Megaphone, Building2, ScrollText, HeartHandshake, HandCoins, ThumbsUp, UserX } from 'lucide-react';
 import { useStore } from '../store';
 import type { GameState, OfficeId } from '../sim/types';
-import { Bar, Btn, Card, rupiah } from './common';
-import { PLAN_ACTIONS, HABITS, HABIT_SLOTS, JOBS, JOB_LEVEL_NAMES, CAMPUSES, MAJORS, PARTIES, OFFICES, PROGRAMS, PROMISES, REGION_LABEL, ROLE_LABEL, LEVEL_LABEL, officeDef, CAMPUS_CRIT, JOB_CRIT, PARTY_CRIT } from '../content/data';
-import { jobBlock, enrollBlock, monthlyIncome, danaCooldown, partyBlock } from '../sim/life';
+import { Bar, Btn, Card, Select, rupiah } from './common';
+import { HABITS, HABIT_SLOTS, PARTIES, OFFICES, PROGRAMS, PROMISES, REGION_LABEL, ROLE_LABEL, LEVEL_LABEL, officeDef, PARTY_CRIT } from '../content/data';
+import { danaCooldown, partyBlock } from '../sim/life';
+import { VoterNote } from './LifeExtra';
+import { ScheduleCard } from './Schedule';
 import { declareBlock, feeOf, CAMPAIGN_ACTS, campaignActBlock, programBlock } from '../sim/election';
 import { age } from '../sim/core';
 import { monthsToElection } from '../sim/gov';
@@ -16,9 +18,6 @@ type P = { g: GameState };
 export function PlanPanel({ g }: P) {
   const act = useStore(s => s.act);
   const c = g.char;
-  const busy = !!g.office || !!g.campaign;
-  const slots = busy ? 1 : 3;
-  const setSlot = (i: number, id: string) => { const p = [...c.plan]; p[i] = id; act({ type: 'setPlan', plan: p }); };
   const toggleHabit = (id: string) => {
     const has = c.habits.includes(id);
     if (!has && c.habits.length >= HABIT_SLOTS) return;
@@ -26,23 +25,7 @@ export function PlanPanel({ g }: P) {
   };
   return (
     <>
-      <Card icon={CalendarDays} title="Rencana bulanan" right={<small>{busy ? 'Menjabat/kampanye: hanya 1 slot waktu pribadi' : '3 slot waktu tiap bulan'}</small>}>
-        {Array.from({ length: slots }).map((_, i) => {
-          const cur = PLAN_ACTIONS.find(a => a.id === c.plan[i]);
-          return (
-            <div key={i} className="slot">
-              <select value={c.plan[i] ?? ''} onChange={e => setSlot(i, e.target.value)}>
-                {PLAN_ACTIONS.map(a => {
-                  const off = (a.need === 'job' && !c.job) || (a.need === 'party' && !c.party);
-                  return <option key={a.id} value={a.id} disabled={off}>{a.name}{off ? ' (belum bisa)' : ''}</option>;
-                })}
-              </select>
-              {cur && <p className="muted">{cur.desc}</p>}
-            </div>
-          );
-        })}
-        <p className="muted">Rencana berlaku terus sampai kamu ubah.</p>
-      </Card>
+      <ScheduleCard g={g} />
       <Card icon={Repeat} title={`Kebiasaan (${c.habits.length}/${HABIT_SLOTS})`}>
         <div className="grid2">
           {HABITS.map(h => {
@@ -60,79 +43,11 @@ export function PlanPanel({ g }: P) {
   );
 }
 
-export function CareerPanel({ g }: P) {
-  const act = useStore(s => s.act);
-  const c = g.char;
-  const [campus, setCampus] = useState('negeri_daerah');
-  const [major, setMajor] = useState('politik');
-  const eduWhy = enrollBlock(g, campus, campus === 'akmil' ? 'militer' : major);
-  const job = JOBS.find(j => j.id === c.job);
-  return (
-    <>
-      <Card icon={GraduationCap} title="Pendidikan">
-        {c.edu ? (
-          <>
-            <p>Kuliah <b>{c.edu.level} {MAJORS.find(m => m.id === c.edu!.major)?.name}</b> di {CAMPUSES.find(x => x.id === c.edu!.campus)?.name}.</p>
-            <Bar label={`Sisa ${c.edu.monthsLeft} bulan`} value={(c.edu.level === 'S2' ? 24 : 48) - c.edu.monthsLeft} max={c.edu.level === 'S2' ? 24 : 48} tone="blue" />
-            <Btn kind="ghost" small onClick={() => act({ type: 'dropOut' })}>Berhenti kuliah</Btn>
-          </>
-        ) : (
-          <>
-            <p className="muted">{c.degree ? `Gelar: ${c.degree} ${MAJORS.find(m => m.id === c.major)?.name} (${CAMPUSES.find(x => x.id === c.campus)?.name}). Bisa lanjut ${c.degree === 'S1' ? 'S2 (2 tahun)' : '—'}.` : 'Lulusan SMA. Bisa kuliah dulu atau langsung bekerja.'}</p>
-            {c.degree !== 'S2' && (
-              <>
-                <div className="grid2">
-                  {CAMPUSES.map(k => (
-                    <button key={k.id} className={`pick ${campus === k.id ? 'on' : ''}`} onClick={() => setCampus(k.id)}>
-                      <b>{k.name}</b><span>{k.desc}</span>
-                      <span className="crit">Seleksi: {CAMPUS_CRIT[k.id]?.note}</span>
-                      <span className="muted">{k.costPerMonth ? `${rupiah(k.costPerMonth)}/bln` : 'Gratis'}</span>
-                    </button>
-                  ))}
-                </div>
-                {campus !== 'akmil' && (
-                  <div className="grid2" style={{ marginTop: 8 }}>
-                    {MAJORS.filter(m => m.id !== 'militer').map(m => (
-                      <button key={m.id} className={`pick ${major === m.id ? 'on' : ''}`} onClick={() => setMajor(m.id)}>
-                        <b>{m.name}</b><span>{m.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div className="row">
-                  <Btn kind="primary" why={eduWhy} onClick={() => act({ type: 'enroll', campus, major: campus === 'akmil' ? 'militer' : major })}><Send size={14} />Ikut seleksi {c.degree ? 'S2' : 'S1'}</Btn>
-                  {eduWhy && <small className="warn">{eduWhy}</small>}
-                </div>
-              </>
-            )}
-          </>
-        )}
-      </Card>
-      <Card icon={Briefcase} title="Pekerjaan" right={job && <Btn small kind="ghost" onClick={() => act({ type: 'quitJob' })}>Berhenti</Btn>}>
-        {job ? <p>Sekarang: <b>{job.name}</b> ({JOB_LEVEL_NAMES[c.jobLevel]}) · sekitar {rupiah(monthlyIncome(g))}/bln</p>
-          : <p className="muted">{g.office ? 'Jabatan publik adalah pekerjaanmu sekarang.' : c.edu ? 'Mahasiswa tidak bisa bekerja penuh. Pakai aksi "Usaha sampingan" untuk tambahan uang.' : 'Belum bekerja.'}</p>}
-        <div className="grid2">
-          {JOBS.map(j => {
-            const why = jobBlock(g, j);
-            return (
-              <button key={j.id} className={`pick ${c.job === j.id ? 'on' : ''}`} disabled={!!why || c.job === j.id} onClick={() => act({ type: 'takeJob', job: j.id })} title={why ?? ''}>
-                <b>{j.name}</b><span>{j.desc}</span>
-                <span className="crit">{JOB_CRIT[j.id]?.auto ? 'Tanpa seleksi: ' : 'Seleksi: '}{JOB_CRIT[j.id]?.note}</span>
-                <span className="muted">{rupiah(j.income)}/bln awal{why ? ` · ${why}` : ''}</span>
-              </button>
-            );
-          })}
-        </div>
-      </Card>
-    </>
-  );
-}
-
 export function RelationPanel({ g }: P) {
   const act = useStore(s => s.act);
   const met = g.npcs.filter(n => n.met).sort((a, b) => b.rel - a.rel);
   return (
-    <Card icon={Network} title="Relasi" right={<small>{g.socialLeft} interaksi tersisa bulan ini · {g.npcs.filter(n => !n.met).length} tokoh belum dikenal</small>}>
+    <Card icon={Network} title="Relasi" right={<small>{g.socialLeft} interaksi tersisa bulan ini</small>}>
       {met.length === 0 && <p className="muted">Belum kenal siapa-siapa. Bergaullah untuk bertemu orang baru.</p>}
       {met.map(n => (
         <div key={n.id} className="npc">
@@ -168,6 +83,7 @@ export function PoliticsPanel({ g }: P) {
           <p>Presiden <b>{gov.name}</b>{gov.party ? <> (<span style={{ color: PARTIES.find(p => p.id === gov.party)?.color }}>{PARTIES.find(p => p.id === gov.party)?.short}</span>)</> : ' (independen)'} · periode ke-{gov.term}</p>
           <p className="muted"><b>{gst.name}.</b> {gst.desc}</p>
           <Bar label="Kepuasan publik pada presiden" value={g.nation.approval} tone={g.nation.approval < 40 ? 'bad' : 'good'} />
+          <VoterNote g={g} />
           <p className="muted">{gov.term === 1 ? 'Petahana boleh maju lagi; kalau kamu nyalon, dia salah satu lawanmu.' : 'Sudah dua periode: pemilu berikutnya tanpa petahana.'} Riwayat lengkap ada di tab Negara.</p>
         </Card>
       )}
@@ -246,9 +162,7 @@ export function CampaignPanel({ g }: P) {
         </div>
         <div className="slot">
           <label className="muted">Janji yang akan diumbar:</label>
-          <select value={sel} onChange={e => setPromise(e.target.value)}>
-            {promises.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          <Select value={sel ?? ''} onChange={setPromise} options={promises.map(p => ({ value: p.id, label: p.name, hint: p.desc }))} />
           <p className="muted">{PROMISES.find(p => p.id === sel)?.desc}</p>
         </div>
       </Card>

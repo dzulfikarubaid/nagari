@@ -17,7 +17,7 @@ export const EVENTS_LIFE: GameEvent[] = [
     weight: 5,
     once: true,
     choices: [
-      { label: 'Masuk badan eksekutif mahasiswa', fx: { attr: { karisma: 4, jaringan: 5, stres: 4 }, flags: ['anak_bem'] }, result: 'Kamu belajar rapat sampai subuh dan membagi nasi kotak secara adil. Dua-duanya ilmu politik.' },
+      { label: 'Masuk dewan pemerintahan mahasiswa', fx: { attr: { karisma: 4, jaringan: 5, stres: 4 }, flags: ['anak_bem'] }, result: 'Kamu belajar rapat sampai subuh dan membagi nasi kotak secara adil. Dua-duanya ilmu politik.' },
       { label: 'Gabung pers mahasiswa', fx: { attr: { kecerdasan: 4, integritas: 2, jaringan: 2 }, flags: ['pers_kampus'] }, result: 'Tulisan pertamamu soal uang parkir kampus dibaca tiga ratus orang. Rektorat termasuk.' },
       { label: 'Fokus kuliah saja', fx: { attr: { kecerdasan: 5, stres: -2 } }, result: 'IPK aman. Namamu hanya dikenal oleh dosen wali dan penjaga perpustakaan.' },
     ],

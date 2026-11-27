@@ -1,5 +1,5 @@
 // Pemerintahan sebelum (dan sesudah) pemain: presiden AI dengan gaya berbeda, pemilu tiap 5 tahun, dan riwayatnya.
-import type { GameState, Gov, GovRecord, GovSnapshot } from './types';
+import type { GameState, Gov, GovRecord, GovSnapshot, BallotCand } from './types';
 import { rand, range, pick, clamp, log, year } from './core';
 import { GOV_STYLES, PARTIES } from '../content/data';
 import { randomName } from '../content/npcs';
@@ -21,9 +21,9 @@ function pickParty(s: GameState, not?: string | null): string {
 }
 
 /** Lantik presiden AI baru dan pasang anggarannya. */
-export function installGov(s: GameState, name: string, party: string | null, notStyle?: string) {
+export function installGov(s: GameState, name: string, party: string | null, notStyle?: string, styleId?: string) {
   const styles = GOV_STYLES.filter(g => g.id !== notStyle);
-  const style = pick(s, styles);
+  const style = GOV_STYLES.find(g => g.id === styleId) ?? pick(s, styles);
   s.gov = { name, party, style: style.id, since: s.turn, term: 1 };
   s.aiBudget = JSON.parse(JSON.stringify(style.budget));
   s.govHistory.push({ name, party, style: style.id, fromYear: year(s), toYear: null, terms: 1, start: snapshot(s), end: null, how: null, player: false });
@@ -48,7 +48,7 @@ export function initGov(s: GameState) {
 }
 
 /** Pemilu presiden tanpa pemain, atau setelah pemain kalah (winner diisi). */
-export function nationalElection(s: GameState, winner?: { name: string; party: string | null }) {
+export function nationalElection(s: GameState, winner?: { name: string; party: string | null; style?: string }) {
   const g = s.gov;
   s.nextElection += ELECTION_CYCLE;
   const rec = s.govHistory[s.govHistory.length - 1];
@@ -63,9 +63,28 @@ export function nationalElection(s: GameState, winner?: { name: string; party: s
   closeRecord(s, g && g.term >= 2 ? 'Selesai dua periode' : 'Kalah pemilu');
   const party = winner ? winner.party : pickParty(s, g?.party);
   const name = winner ? winner.name : randomName(() => rand(s));
-  installGov(s, name, party, oldStyle);
+  installGov(s, name, party, oldStyle, winner?.style);
   const st = GOV_STYLES.find(x => x.id === s.gov!.style)!;
   log(s, `Pemilu presiden: ${name}${party ? ` (${PARTIES.find(p => p.id === party)?.short})` : ''} menang. Gaya pemerintahannya: ${st.name.toLowerCase()}.`);
+}
+
+/** Surat suara: petahana (bila boleh maju lagi) dan dua penantang. */
+export function openBallot(s: GameState) {
+  const g = s.gov;
+  const cands: BallotCand[] = [];
+  if (g && g.term === 1) cands.push({ name: g.name, party: g.party, style: g.style, incumbent: true, base: s.nation.approval });
+  const used = new Set(cands.map(c => c.party));
+  const styles = new Set(cands.map(c => c.style));
+  while (cands.length < 3) {
+    let party = pickParty(s);
+    for (let i = 0; i < 6 && used.has(party); i++) party = pickParty(s);
+    used.add(party);
+    const st = GOV_STYLES.filter(x => !styles.has(x.id));
+    const style = pick(s, st.length ? st : GOV_STYLES).id;
+    styles.add(style);
+    cands.push({ name: randomName(() => rand(s)), party, style, incumbent: false, base: 38 + range(s, -9, 9) + (s.seats[party] ?? 15) * 0.2 });
+  }
+  s.ballot = { cands };
 }
 
 /** Dipanggil tiap bulan selama pemain belum presiden. */
@@ -77,7 +96,10 @@ export function stepGov(s: GameState) {
     s.nation.approval = clamp(s.nation.approval - range(s, 3, 7));
     log(s, `Skandal korupsi mengguncang pemerintahan ${s.gov.name}.`);
   }
-  if (s.turn >= s.nextElection && s.campaign?.office !== 'presiden') nationalElection(s);
+  if (s.turn >= s.nextElection && s.campaign?.office !== 'presiden') {
+    // Pemain ikut mencoblos; pemilu baru diputuskan setelah suaranya masuk.
+    if (!s.ending && !s.ballot) openBallot(s);
+  }
 }
 
 /** Pemain dilantik: pemerintahan AI berakhir dan masa pemain mulai dicatat. */

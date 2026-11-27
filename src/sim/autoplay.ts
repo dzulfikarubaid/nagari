@@ -192,6 +192,7 @@ export function autoplay(seed: number, strat: Strategy, background = 'menengah',
     while (blocked(s) && !s.ending && guard++ < 20) {
       if (s.result) s = act(s, { type: 'dismissResult' });
       else if (s.lastElection) s = act(s, { type: 'dismissElection' });
+      else if (s.ballot) s = act(s, { type: 'vote', index: 0, party: s.char.party, endorse: false });
       else if (s.pending.length) {
         const i = chooseIndex(s, strat === 'lalim' ? (s.pres ? 'nekat' : 'terencana') : strat);
         if (i < 0) throw new Error(`Event ${s.pending[0].id} tidak punya pilihan yang bisa diambil`);

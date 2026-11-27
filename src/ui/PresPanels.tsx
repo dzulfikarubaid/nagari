@@ -10,6 +10,7 @@ import { ministerCandidates, policyBlock, policyCapital, diploBlock, warPower, l
 import { findNpc } from '../sim/core';
 import { GOV_STYLES } from '../content/data';
 import { BookOpen } from 'lucide-react';
+import { RegionPanel } from './RegionPanel';
 import type { GovRecord } from '../sim/types';
 
 type P = { g: GameState };
@@ -69,6 +70,7 @@ export function NationPanel({ g }: P) {
   const f = fiscal(g);
   return (
     <>
+      <RegionPanel g={g} />
       <Card icon={ChartColumn} title="Statistik negara" right={g.pres ? <small>Skor warisan sementara: <b>{legacyScore(g)}</b></small> : <small>Kamu belum presiden; ini kondisi Nagari saat ini</small>}>
         {g.pres && <Bar label="Kepuasan publik" value={n.approval} tone={n.approval < 30 ? 'bad' : 'good'} />}
         {GROUPS.map(gr => (

@@ -2,7 +2,7 @@ import type { Npc, NpcRole, MinistryId } from '../sim/types';
 
 type T = [id: string, name: string, role: NpcRole, desc: string, influence: number, integrity: number, competence: number, loyalty: number, expertise: MinistryId, party: string | null];
 
-// 30 tokoh; tiap permainan hanya sebagian yang muncul.
+// Semua tokoh ini muncul di setiap permainan.
 const RAW: T[] = [
   ['p_properti', 'Handoko Wiraatmaja', 'pengusaha', 'Raja properti. Murah hati pada calon pejabat, dan tak pernah lupa menagih.', 80, 25, 60, 40, 'keuangan', 'pkr'],
   ['p_tambang', 'Samsul Barata', 'pengusaha', 'Juragan tambang batu bara. Dana tak terbatas, izin selalu bermasalah.', 85, 15, 50, 35, 'pu', 'pkr'],

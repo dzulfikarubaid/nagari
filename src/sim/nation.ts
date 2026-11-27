@@ -3,6 +3,7 @@
 import type { GameState, NationKey, Budget, MinistryId, SectorKey } from './types';
 import { rand, range, clampNation, findNpc, log, hasFlag } from './core';
 import { POLICIES, GOV_STYLES } from '../content/data';
+import { reconcile, stepRegions, pullUp, recordRegions, isReg } from './regions';
 
 /** Gaya presiden AI yang sedang menjabat (null bila pemain presiden). */
 export const govStyle = (s: GameState) => (!s.pres && s.gov ? GOV_STYLES.find(g => g.id === s.gov!.style) ?? null : null);
@@ -89,7 +90,8 @@ export function stepNation(s: GameState) {
   const sanctions = pres ? pres.countries.filter(c => c.sanksi).length : 0;
   const broken = pres ? s.promises.filter(p => p.office === 'presiden' && p.resolved === 'ingkar').length : 0;
 
-  const T: Record<NationKey, number> = {
+  // Rumus target; dievaluasi per kota untuk statistik kewilayahan (lihat sim/regions.ts).
+  const target = (n: Record<NationKey, number>): Record<NationKey, number> => ({
     pdb: n.pdb,
     utang: n.utang,
     pendidikan: 15 + sp.pendidikan * 14 * ministryEff(s, 'pendidikan') * leak + md('pendidikan'),
@@ -110,29 +112,38 @@ export function stepNation(s: GameState) {
     stabilitas: 30 + n.kebahagiaan * 0.5 - (n.kriminalitas - 45) * 0.3 + (coalitionSeats(s) - 50) * 0.15 - (war ? 8 : 0) + md('stabilitas'),
     approval: 20 + n.kebahagiaan * 0.5 + (n.pertumbuhan - 4) * 3 - Math.max(0, n.inflasi - 5) * 2 - Math.max(0, b.pajak - 24) * 0.7
       + (pres ? (s.char.attr.karisma - 50) * 0.12 : 0) - broken * 4 - (war ? war.lelah * 0.5 : 0) + md('approval'),
-  };
+  });
 
   const RATE: Partial<Record<NationKey, number>> = {
     pendidikan: 0.015, kesehatan: 0.025, infrastruktur: 0.02, militer: 0.04, kriminalitas: 0.03, korupsi: 0.02, lingkungan: 0.02,
     pertumbuhan: 0.1, inflasi: 0.1, pengangguran: 0.06, kemiskinan: 0.04, kebahagiaan: 0.06, stabilitas: 0.06, approval: 0.08,
   };
+  reconcile(s);
+  // Statistik nasional murni bergerak di tingkat nasional; untuk statistik kewilayahan, noise
+  // yang sama menjadi guncangan bersama seluruh kota. Urutan pemakaian rng tidak berubah.
+  const T = target(n);
+  const common: Partial<Record<NationKey, number>> = {};
   for (const k of Object.keys(RATE) as NationKey[]) {
     const noise = (k === 'pertumbuhan' || k === 'inflasi') ? range(s, -0.08, 0.08) : range(s, -0.12, 0.12);
-    n[k] += (T[k] - n[k]) * RATE[k]! + noise;
+    if (isReg(k)) common[k] = noise; else n[k] += (T[k] - n[k]) * RATE[k]! + noise;
   }
+  // Statistik kewilayahan bergerak per kota, lalu dijumlahkan ke atas (termasuk PDB).
+  stepRegions(s, target, RATE, common);
 
   // Guncangan global sesekali.
   if (rand(s) < 0.012) {
     n.pertumbuhan -= range(s, 1, 2.5); n.inflasi += range(s, 0.5, 2); n.pengangguran += 0.5;
     log(s, 'Guncangan ekonomi global memukul Nagari: ekspor anjlok, harga naik.');
+    reconcile(s);
   }
 
-  n.pdb *= 1 + n.pertumbuhan / 1200;
   n.utang += -f.balance / 12 - n.utang * (n.pertumbuhan + n.inflasi) / 1200;
   if (n.utang > 110) { n.pertumbuhan -= 0.15; n.inflasi += 0.2; }
   if (hasFlag(s, 'diktator')) n.korupsi += 0.05;
   clampNation(s);
+  pullUp(s);
 
   s.nationHist.push({ ...n });
+  recordRegions(s);
   if (s.nationHist.length > 360) s.nationHist.shift();
 }

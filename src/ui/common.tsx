@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
-import { TriangleAlert, type LucideIcon } from 'lucide-react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { TriangleAlert, ChevronDown, Check, type LucideIcon } from 'lucide-react';
 import type { Fx, AttrKey, Level, NationKey, RegionKey } from '../sim/types';
 import { ATTR_LABEL, LEVEL_LABEL, NATION_LABEL, REGION_LABEL } from '../content/data';
 
@@ -78,5 +79,61 @@ export function Modal({ children, wide, tone }: { children: ReactNode; wide?: bo
     <div className="modal-back">
       <div className={`modal ${wide ? 'wide' : ''} ${tone ?? ''}`}>{children}</div>
     </div>
+  );
+}
+
+export interface SelectOption<T extends string> { value: T; label: ReactNode; hint?: ReactNode; disabled?: boolean; why?: string | null }
+
+/** Dropdown buatan sendiri (bukan <select> bawaan): bisa menampilkan keterangan dan alasan opsi terkunci. */
+export function Select<T extends string>({ value, onChange, options, placeholder = 'Pilih…', grow }: { value: T; onChange: (v: T) => void; options: SelectOption<T>[]; placeholder?: string; grow?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ left: number; width: number; top?: number; bottom?: number; max: number }>({ left: 0, width: 0, max: 300 });
+  const btn = useRef<HTMLButtonElement>(null);
+  const list = useRef<HTMLDivElement>(null);
+  const cur = options.find(o => o.value === value);
+
+  useLayoutEffect(() => {
+    if (!open || !btn.current) return;
+    const r = btn.current.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom - 12, above = r.top - 12;
+    const up = below < 220 && above > below;
+    setPos({ left: r.left, width: Math.max(r.width, 240), max: Math.min(340, up ? above : below), ...(up ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }) });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: Event) => { if (e.type === 'mousedown' && (list.current?.contains(e.target as Node) || btn.current?.contains(e.target as Node))) return; setOpen(false); };
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const onScroll = (e: Event) => { if (!list.current?.contains(e.target as Node)) setOpen(false); };
+    window.addEventListener('mousedown', close);
+    window.addEventListener('resize', close);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('keydown', key);
+    return () => { window.removeEventListener('mousedown', close); window.removeEventListener('resize', close); window.removeEventListener('scroll', onScroll, true); window.removeEventListener('keydown', key); };
+  }, [open]);
+
+  return (
+    <>
+      <button ref={btn} type="button" className={`sel ${open ? 'open' : ''} ${grow ? 'grow' : ''}`} onClick={() => setOpen(o => !o)}>
+        <span className="sel-val">{cur ? cur.label : <span className="muted">{placeholder}</span>}</span>
+        <ChevronDown size={15} />
+      </button>
+      {open && createPortal(
+        <div ref={list} className="sel-list" role="listbox" style={{ left: pos.left, width: pos.width, top: pos.top, bottom: pos.bottom, maxHeight: pos.max }}>
+          {options.map(o => {
+            const off = o.disabled || !!o.why;
+            return (
+              <button key={o.value} type="button" role="option" aria-selected={o.value === value} className={`sel-opt ${o.value === value ? 'on' : ''}`} disabled={off}
+                onClick={() => { onChange(o.value); setOpen(false); }}>
+                <span className="sel-main">{o.label}{o.value === value && <Check size={13} />}</span>
+                {o.hint && <span className="sel-hint">{o.hint}</span>}
+                {o.why && <span className="sel-why">{o.why}</span>}
+              </button>
+            );
+          })}
+        </div>,
+        document.body,
+      )}
+    </>
   );
 }
